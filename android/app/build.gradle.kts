@@ -3,6 +3,7 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -29,6 +30,9 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
+     buildFeatures {
+        buildConfig = true
+    }
 
     buildTypes {
         release {
@@ -42,3 +46,17 @@ android {
 flutter {
     source = "../.."
 }
+dependencies {
+    // ✅ Firebase BoM (Bill of Materials)
+    implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
+
+    // ✅ Example: Firebase Analytics
+    implementation("com.google.firebase:firebase-analytics")
+
+    // ✅ Add Firebase Auth (since MyFixPal needs login/registration)
+    implementation("com.google.firebase:firebase-auth")
+
+    // ✅ Add Firestore (for storing worker/user data)
+    implementation("com.google.firebase:firebase-firestore")
+}
+

@@ -1,0 +1,34 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "myfixpal-1",
+          "appId": "1:1091650049239:android:ec42a54744357a1ae90c92",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "myfixpal-1",
+          "configurations": {
+            "android": "1:1091650049239:android:ec42a54744357a1ae90c92",
+            "ios": "1:1091650049239:ios:3b3a2102bf283b58e90c92",
+            "macos": "1:1091650049239:ios:3b3a2102bf283b58e90c92",
+            "web": "1:1091650049239:web:f42913ce6c182901e90c92",
+            "windows": "1:1091650049239:web:a4c59963f98be9fae90c92"
+          }
+        }
+      }
+    }
+  },
+  "emulators": {
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true
+    },
+    "singleProjectMode": true
+  }
+}
