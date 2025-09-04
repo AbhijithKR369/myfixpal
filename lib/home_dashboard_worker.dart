@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeDashboardWorker extends StatefulWidget {
   const HomeDashboardWorker({super.key});
@@ -19,93 +19,60 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
     'Plumber',
   ];
 
-  File? _profilePhoto;
+  String? _existingPhotoUrl;
+  String workerName = "Loading...";
+  String workerMobile = "";
 
-  Future<void> _pickProfilePhoto() async {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Take photo'),
-              onTap: () async {
-                Navigator.pop(ctx);
-                final pickedFile = await ImagePicker().pickImage(
-                  source: ImageSource.camera,
-                );
-                if (pickedFile != null) {
-                  setState(() {
-                    _profilePhoto = File(pickedFile.path);
-                  });
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Choose from gallery'),
-              onTap: () async {
-                Navigator.pop(ctx);
-                final pickedFile = await ImagePicker().pickImage(
-                  source: ImageSource.gallery,
-                );
-                if (pickedFile != null) {
-                  setState(() {
-                    _profilePhoto = File(pickedFile.path);
-                  });
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.close),
-              title: const Text('Cancel'),
-              onTap: () => Navigator.pop(ctx),
-            ),
-          ],
-        ),
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkerDetails();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload worker data when page rebuilds or returns focus
+    _loadWorkerDetails();
+  }
+
+  Future<void> _loadWorkerDetails() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (doc.exists) {
+      final data = doc.data()!;
+      setState(() {
+        workerName = data['fullName'] ?? "Worker";
+        workerMobile = data['mobile'] ?? "";
+        _existingPhotoUrl = data['profilePhotoUrl'];
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("MyFixPal Worker"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle),
-            onPressed: () {
-              Navigator.pushNamed(context, '/update_profile_worker');
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text("MyFixPal Worker")),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              currentAccountPicture: GestureDetector(
-                onTap: _pickProfilePhoto,
-                child: CircleAvatar(
-                  radius: 40,
-                  backgroundImage: _profilePhoto != null
-                      ? FileImage(_profilePhoto!)
-                      : const AssetImage('assets/default_profile.png')
-                            as ImageProvider,
-                  child: _profilePhoto == null
-                      ? const Icon(
-                          Icons.add_a_photo,
-                          size: 30,
-                          color: Colors.white70,
-                        )
-                      : null,
-                ),
+              currentAccountPicture: CircleAvatar(
+                radius: 40,
+                backgroundImage: _existingPhotoUrl != null
+                    ? NetworkImage(_existingPhotoUrl!)
+                    : const AssetImage('assets/default_profile.png')
+                          as ImageProvider,
               ),
-              accountName: const Text("Worker Name"),
-              accountEmail: const Text(""),
+              accountName: Text(workerName),
+              accountEmail: Text(workerMobile),
               decoration: BoxDecoration(color: Theme.of(context).primaryColor),
             ),
             const Divider(),
@@ -133,9 +100,9 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Welcome, Worker!",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            Text(
+              "Welcome, $workerName!",
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -193,8 +160,6 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
               },
               child: const Text('Search'),
             ),
-            const SizedBox(height: 20),
-            // Add your quick services or recent requests here...
           ],
         ),
       ),

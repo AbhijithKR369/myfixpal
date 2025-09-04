@@ -21,7 +21,7 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
   final TextEditingController locationController = TextEditingController();
   final TextEditingController pincodeController = TextEditingController();
   final TextEditingController aadhaarController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController mobileController = TextEditingController();
   final TextEditingController whatsappController = TextEditingController();
 
   String? selectedProfession;
@@ -33,6 +33,43 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
   ];
 
   File? _profilePhoto;
+  String? _existingPhotoUrl;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile(); // Load existing data, including current photo URL
+  }
+
+  Future<void> _loadProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _isLoading = true);
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      setState(() {
+        nameController.text = data['fullName'] ?? '';
+        dobController.text = data['dob'] ?? '';
+        addressController.text = data['address'] ?? '';
+        locationController.text = data['location'] ?? '';
+        pincodeController.text = data['pincode'] ?? '';
+        aadhaarController.text = data['aadhaar'] ?? '';
+        mobileController.text = data['mobile'] ?? '';
+        whatsappController.text = data['whatsapp'] ?? '';
+        selectedProfession = data['profession'];
+        _existingPhotoUrl = data['profilePhotoUrl'];
+      });
+    }
+
+    setState(() => _isLoading = false);
+  }
 
   Future<void> _pickProfilePhoto() async {
     showModalBottomSheet(
@@ -49,9 +86,7 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
                   source: ImageSource.camera,
                 );
                 if (pickedFile != null) {
-                  setState(() {
-                    _profilePhoto = File(pickedFile.path);
-                  });
+                  setState(() => _profilePhoto = File(pickedFile.path));
                 }
               },
             ),
@@ -64,9 +99,7 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
                   source: ImageSource.gallery,
                 );
                 if (pickedFile != null) {
-                  setState(() {
-                    _profilePhoto = File(pickedFile.path);
-                  });
+                  setState(() => _profilePhoto = File(pickedFile.path));
                 }
               },
             ),
@@ -90,7 +123,8 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
     );
     if (picked != null) {
       setState(() {
-        dobController.text = "${picked.day}/${picked.month}/${picked.year}";
+        dobController.text =
+            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
       });
     }
   }
@@ -104,14 +138,16 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
       return;
     }
 
+    setState(() => _isLoading = true);
+
     try {
-      String? photoUrl;
+      String? photoUrl = _existingPhotoUrl;
+
       if (_profilePhoto != null) {
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('worker_profile_photos')
             .child('${user.uid}.jpg');
-
         final uploadTask = storageRef.putFile(_profilePhoto!);
         final snapshot = await uploadTask.whenComplete(() {});
         photoUrl = await snapshot.ref.getDownloadURL();
@@ -124,29 +160,32 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
         'location': locationController.text.trim(),
         'pincode': pincodeController.text.trim(),
         'aadhaar': aadhaarController.text.trim(),
-        'phone': phoneController.text.trim(),
+        'mobile': mobileController.text.trim(),
         'whatsapp': whatsappController.text.trim(),
         'profession': selectedProfession,
+        if (photoUrl != null) 'profilePhotoUrl': photoUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
       };
-
-      if (photoUrl != null) {
-        updatedData['profilePhotoUrl'] = photoUrl;
-      }
 
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
-          .update(updatedData);
+          .set(updatedData, SetOptions(merge: true));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully!')),
-      );
-
-      Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully!')),
+        );
+        Navigator.pop(context);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to update profile: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update profile: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -154,119 +193,137 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Update Worker Profile')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            Center(
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: _profilePhoto != null
-                        ? FileImage(_profilePhoto!)
-                        : const AssetImage('assets/default_profile.png')
-                              as ImageProvider,
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ListView(
+              children: [
+                Center(
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundImage: _profilePhoto != null
+                            ? FileImage(_profilePhoto!)
+                            : (_existingPhotoUrl != null
+                                      ? NetworkImage(_existingPhotoUrl!)
+                                      : const AssetImage(
+                                          'assets/default_profile.png',
+                                        ))
+                                  as ImageProvider,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.camera_alt),
+                        onPressed: _pickProfilePhoto,
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.camera_alt),
-                    onPressed: _pickProfilePhoto,
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    border: OutlineInputBorder(),
                   ),
-                ],
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: dobController,
+                  decoration: const InputDecoration(
+                    labelText: 'Date of Birth',
+                    suffixIcon: Icon(Icons.calendar_today),
+                    border: OutlineInputBorder(),
+                  ),
+                  readOnly: true,
+                  onTap: _selectDateOfBirth,
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: addressController,
+                  decoration: const InputDecoration(
+                    labelText: 'Address',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: locationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Location / City',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: pincodeController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Pincode',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: aadhaarController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Aadhaar Number',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: mobileController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Mobile Number',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: whatsappController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'WhatsApp Number',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Job / Profession',
+                    border: OutlineInputBorder(),
+                  ),
+                  initialValue: selectedProfession,
+                  items: professions
+                      .map(
+                        (job) => DropdownMenuItem(value: job, child: Text(job)),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() => selectedProfession = val);
+                  },
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _saveProfile,
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ),
+          if (_isLoading)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
               ),
             ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: dobController,
-              decoration: const InputDecoration(
-                labelText: 'Date of Birth',
-                suffixIcon: Icon(Icons.calendar_today),
-                border: OutlineInputBorder(),
-              ),
-              readOnly: true,
-              onTap: _selectDateOfBirth,
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: addressController,
-              decoration: const InputDecoration(
-                labelText: 'Address',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: locationController,
-              decoration: const InputDecoration(
-                labelText: 'Location / City',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: pincodeController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Pincode',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: aadhaarController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Aadhaar Number',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: whatsappController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'WhatsApp Number',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Job / Profession',
-                border: OutlineInputBorder(),
-              ),
-              value: selectedProfession,
-              items: professions.map((job) {
-                return DropdownMenuItem(value: job, child: Text(job));
-              }).toList(),
-              onChanged: (val) {
-                setState(() {
-                  selectedProfession = val;
-                });
-              },
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(onPressed: _saveProfile, child: const Text('Save')),
-          ],
-        ),
+        ],
       ),
     );
   }

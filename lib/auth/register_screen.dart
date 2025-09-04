@@ -191,9 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     firstDate: DateTime(1900),
                     lastDate: DateTime.now(),
                   );
-                  if (picked != null) {
-                    setState(() => selectedDob = picked);
-                  }
+                  setState(() => selectedDob = picked);
                 },
                 child: InputDecorator(
                   decoration: const InputDecoration(
@@ -246,7 +244,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     prefixIcon: Icon(Icons.work),
                     border: OutlineInputBorder(),
                   ),
-                  value: selectedProfession,
+                  initialValue: selectedProfession,
                   items:
                       const ['Painter', 'Electrician', 'Carpenter', 'Plumber']
                           .map(

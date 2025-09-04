@@ -19,11 +19,12 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   final TextEditingController addressController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController pincodeController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController mobileController =
+      TextEditingController(); // ✅ Only mobile
 
   File? _profilePhoto;
   String? _existingPhotoUrl;
-  bool _isLoading = false; // ✅ for showing loading spinner
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -50,7 +51,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         addressController.text = data['address'] ?? '';
         locationController.text = data['location'] ?? '';
         pincodeController.text = data['pincode'] ?? '';
-        phoneController.text = data['phone'] ?? '';
+        mobileController.text = data['mobile'] ?? ''; // ✅ Load from "mobile"
         _existingPhotoUrl = data['profilePhotoUrl'];
       });
     }
@@ -73,9 +74,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                   source: ImageSource.camera,
                 );
                 if (pickedFile != null) {
-                  setState(() {
-                    _profilePhoto = File(pickedFile.path);
-                  });
+                  setState(() => _profilePhoto = File(pickedFile.path));
                 }
               },
             ),
@@ -88,9 +87,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                   source: ImageSource.gallery,
                 );
                 if (pickedFile != null) {
-                  setState(() {
-                    _profilePhoto = File(pickedFile.path);
-                  });
+                  setState(() => _profilePhoto = File(pickedFile.path));
                 }
               },
             ),
@@ -133,7 +130,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     try {
       String? photoUrl = _existingPhotoUrl;
 
-      // ✅ Upload profile photo only if a new one was picked
       if (_profilePhoto != null) {
         final storageRef = FirebaseStorage.instance
             .ref()
@@ -145,19 +141,17 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         photoUrl = await snapshot.ref.getDownloadURL();
       }
 
-      // ✅ Prepare updated data
       final updatedData = <String, dynamic>{
         'fullName': nameController.text.trim(),
         'dob': dobController.text.trim(),
         'address': addressController.text.trim(),
         'location': locationController.text.trim(),
         'pincode': pincodeController.text.trim(),
-        'phone': phoneController.text.trim(),
+        'mobile': mobileController.text.trim(), // ✅ Update only "mobile"
         if (photoUrl != null) 'profilePhotoUrl': photoUrl,
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      // ✅ Use set with merge to avoid "document not found" error
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -258,10 +252,10 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 ),
                 const SizedBox(height: 24),
                 TextField(
-                  controller: phoneController,
+                  controller: mobileController, // ✅ only mobile
                   keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(
-                    labelText: 'Phone Number',
+                    labelText: 'Mobile Number',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -273,7 +267,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
               ],
             ),
           ),
-          if (_isLoading) // ✅ overlay loader
+          if (_isLoading)
             Container(
               color: Colors.black54,
               child: const Center(

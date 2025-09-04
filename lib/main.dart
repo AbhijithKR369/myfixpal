@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'firebase_options.dart'; // Generated Firebase options
 import 'home_dashboard_worker.dart';
 import 'home_dashboard_user.dart';
@@ -11,6 +12,11 @@ import 'update_profile_worker.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Enable Storage emulator locally for development/testing
+  // Remove or comment this line before releasing to production
+  FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+
   runApp(const MyApp());
 }
 
