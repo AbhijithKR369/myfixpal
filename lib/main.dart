@@ -8,6 +8,8 @@ import 'auth/register_screen.dart';
 import 'auth/login_screen.dart'; // Import your login screen
 import 'update_profile_screen.dart';
 import 'update_profile_worker.dart';
+import 'startup_screen.dart';
+import 'splash_screen.dart'; // Import the new splash screen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,8 +31,11 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'MyFixPal',
       theme: ThemeData(primarySwatch: Colors.blue),
-      initialRoute: '/login', // Set login screen as the initial route
+      // Set splash screen as the initial route to show animated splash on app start
+      initialRoute: '/splash',
       routes: {
+        '/splash': (context) => const SplashScreen(),
+        '/startup': (context) => const StartupScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home_user': (context) => const HomeDashboardUser(),

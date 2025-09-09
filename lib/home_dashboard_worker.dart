@@ -19,150 +19,159 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
     'Plumber',
   ];
 
-  String? _existingPhotoUrl;
-  String workerName = "Loading...";
-  String workerMobile = "";
-
-  @override
-  void initState() {
-    super.initState();
-    _loadWorkerDetails();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Reload worker data when page rebuilds or returns focus
-    _loadWorkerDetails();
-  }
-
-  Future<void> _loadWorkerDetails() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-
-    if (doc.exists) {
-      final data = doc.data()!;
-      setState(() {
-        workerName = data['fullName'] ?? "Worker";
-        workerMobile = data['mobile'] ?? "";
-        _existingPhotoUrl = data['profilePhotoUrl'];
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("MyFixPal Worker")),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            UserAccountsDrawerHeader(
-              currentAccountPicture: CircleAvatar(
-                radius: 40,
-                backgroundImage: _existingPhotoUrl != null
-                    ? NetworkImage(_existingPhotoUrl!)
-                    : const AssetImage('assets/default_profile.png')
-                          as ImageProvider,
-              ),
-              accountName: Text(workerName),
-              accountEmail: Text(workerMobile),
-              decoration: BoxDecoration(color: Theme.of(context).primaryColor),
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (userId == null) {
+      return const Scaffold(body: Center(child: Text('No user logged in')));
+    }
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Scaffold(
+            body: Center(child: Text('User data not found')),
+          );
+        }
+
+        final data = snapshot.data!.data()! as Map<String, dynamic>;
+
+        final _existingPhotoUrl = data['profilePhotoUrl'];
+        final workerName = data['fullName'] ?? "Worker";
+        final workerMobile = data['mobile'] ?? "";
+
+        return Scaffold(
+          appBar: AppBar(title: const Text("MyFixPal Worker")),
+          drawer: Drawer(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                UserAccountsDrawerHeader(
+                  currentAccountPicture: CircleAvatar(
+                    radius: 40,
+                    backgroundImage: _existingPhotoUrl != null
+                        ? NetworkImage(_existingPhotoUrl)
+                        : const AssetImage('assets/default_profile.png')
+                              as ImageProvider,
+                  ),
+                  accountName: Text(workerName),
+                  accountEmail: Text(workerMobile),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: const Text('Update Profile'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/update_profile_worker');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Logout'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await FirebaseAuth.instance.signOut();
+                    if (mounted) {
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        '/login',
+                        (route) => false,
+                      );
+                    }
+                  },
+                ),
+              ],
             ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('Update Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/update_profile_worker');
-              },
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Welcome, $workerName!",
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Search Workers",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Select Profession',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: selectedProfession,
+                  items: professions
+                      .map(
+                        (job) => DropdownMenuItem(value: job, child: Text(job)),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedProfession = val;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: pincodeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Enter Pincode',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.location_on),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedProfession != null &&
+                        pincodeController.text.isNotEmpty) {
+                      Navigator.pushNamed(
+                        context,
+                        '/search_results',
+                        arguments: {
+                          'profession': selectedProfession,
+                          'pincode': pincodeController.text,
+                        },
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Please select profession and enter pincode',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Search'),
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/login');
-              },
-            ),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Welcome, $workerName!",
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              "Search Workers",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Select Profession',
-                border: OutlineInputBorder(),
-              ),
-              initialValue: selectedProfession,
-              items: professions.map((job) {
-                return DropdownMenuItem(value: job, child: Text(job));
-              }).toList(),
-              onChanged: (val) {
-                setState(() {
-                  selectedProfession = val;
-                });
-              },
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: pincodeController,
-              decoration: const InputDecoration(
-                labelText: 'Enter Pincode',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.location_on),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () {
-                if (selectedProfession != null &&
-                    pincodeController.text.isNotEmpty) {
-                  Navigator.pushNamed(
-                    context,
-                    '/search_results',
-                    arguments: {
-                      'profession': selectedProfession,
-                      'pincode': pincodeController.text,
-                    },
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please select profession and enter pincode',
-                      ),
-                    ),
-                  );
-                }
-              },
-              child: const Text('Search'),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

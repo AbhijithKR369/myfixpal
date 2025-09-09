@@ -36,10 +36,13 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
   String? _existingPhotoUrl;
   bool _isLoading = false;
 
+  static const Color backgroundColor = Color(0xFF222733);
+  static const Color accentColor = Color(0xFFFFD34E);
+
   @override
   void initState() {
     super.initState();
-    _loadProfile(); // Load existing data, including current photo URL
+    _loadProfile();
   }
 
   Future<void> _loadProfile() async {
@@ -132,9 +135,11 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
   Future<void> _saveProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('User not logged in')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('User not logged in')));
+      }
       return;
     }
 
@@ -189,10 +194,55 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
     }
   }
 
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String labelText,
+    IconData? prefixIcon,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+    VoidCallback? onTap,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      readOnly: readOnly,
+      onTap: onTap,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: const TextStyle(color: Colors.white60),
+        prefixIcon: prefixIcon != null
+            ? Icon(prefixIcon, color: accentColor)
+            : null,
+        filled: true,
+        fillColor: backgroundColor.withAlpha((0.8 * 255).toInt()),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: accentColor, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white24, width: 1),
+        ),
+      ),
+    );
+  }
+
+  // static const Color backgroundColor = Color(0xFF222733);
+  // static const Color accentColor = Color(0xFFFFD34E);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Update Worker Profile')),
+      appBar: AppBar(
+        title: const Text('Update Worker Profile'),
+        backgroundColor: backgroundColor,
+      ),
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
           Padding(
@@ -208,89 +258,72 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
                         backgroundImage: _profilePhoto != null
                             ? FileImage(_profilePhoto!)
                             : (_existingPhotoUrl != null
-                                      ? NetworkImage(_existingPhotoUrl!)
-                                      : const AssetImage(
-                                          'assets/default_profile.png',
-                                        ))
-                                  as ImageProvider,
+                                  ? NetworkImage(_existingPhotoUrl!)
+                                        as ImageProvider
+                                  : const AssetImage(
+                                      'assets/default_profile.png',
+                                    )),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.camera_alt),
+                        icon: const Icon(Icons.camera_alt, color: accentColor),
                         onPressed: _pickProfilePhoto,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    border: OutlineInputBorder(),
-                  ),
+                  labelText: 'Name',
+                  prefixIcon: Icons.person,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: dobController,
-                  decoration: const InputDecoration(
-                    labelText: 'Date of Birth',
-                    suffixIcon: Icon(Icons.calendar_today),
-                    border: OutlineInputBorder(),
-                  ),
+                  labelText: 'Date of Birth',
+                  prefixIcon: Icons.calendar_today,
                   readOnly: true,
                   onTap: _selectDateOfBirth,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Address',
-                    border: OutlineInputBorder(),
-                  ),
+                  labelText: 'Address',
+                  prefixIcon: Icons.home,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: locationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Location / City',
-                    border: OutlineInputBorder(),
-                  ),
+                  labelText: 'Location / City',
+                  prefixIcon: Icons.location_city,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: pincodeController,
+                  labelText: 'Pincode',
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Pincode',
-                    border: OutlineInputBorder(),
-                  ),
+                  prefixIcon: Icons.pin_drop,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: aadhaarController,
+                  labelText: 'Aadhaar Number',
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Aadhaar Number',
-                    border: OutlineInputBorder(),
-                  ),
+                  prefixIcon: Icons.credit_card,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: mobileController,
+                  labelText: 'Mobile Number',
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Mobile Number',
-                    border: OutlineInputBorder(),
-                  ),
+                  prefixIcon: Icons.phone_android,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: whatsappController,
+                  labelText: 'WhatsApp Number',
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'WhatsApp Number',
-                    border: OutlineInputBorder(),
-                  ),
+                  prefixIcon: Icons.message,
                 ),
                 const SizedBox(height: 24),
                 DropdownButtonFormField<String>(
@@ -298,7 +331,7 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
                     labelText: 'Job / Profession',
                     border: OutlineInputBorder(),
                   ),
-                  initialValue: selectedProfession,
+                  value: selectedProfession,
                   items: professions
                       .map(
                         (job) => DropdownMenuItem(value: job, child: Text(job)),
@@ -311,7 +344,17 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _saveProfile,
-                  child: const Text('Save'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.black87,
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.black87)
+                      : const Text('Save'),
                 ),
               ],
             ),

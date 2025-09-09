@@ -19,12 +19,14 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   final TextEditingController addressController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController pincodeController = TextEditingController();
-  final TextEditingController mobileController =
-      TextEditingController(); // ✅ Only mobile
+  final TextEditingController mobileController = TextEditingController();
 
   File? _profilePhoto;
   String? _existingPhotoUrl;
   bool _isLoading = false;
+
+  static const Color backgroundColor = Color(0xFF222733);
+  static const Color accentColor = Color(0xFFFFD34E);
 
   @override
   void initState() {
@@ -51,7 +53,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         addressController.text = data['address'] ?? '';
         locationController.text = data['location'] ?? '';
         pincodeController.text = data['pincode'] ?? '';
-        mobileController.text = data['mobile'] ?? ''; // ✅ Load from "mobile"
+        mobileController.text = data['mobile'] ?? '';
         _existingPhotoUrl = data['profilePhotoUrl'];
       });
     }
@@ -119,9 +121,11 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   Future<void> _saveProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('User not logged in')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('User not logged in')));
+      }
       return;
     }
 
@@ -147,7 +151,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         'address': addressController.text.trim(),
         'location': locationController.text.trim(),
         'pincode': pincodeController.text.trim(),
-        'mobile': mobileController.text.trim(), // ✅ Update only "mobile"
+        'mobile': mobileController.text.trim(),
         if (photoUrl != null) 'profilePhotoUrl': photoUrl,
         'updatedAt': FieldValue.serverTimestamp(),
       };
@@ -174,10 +178,52 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     }
   }
 
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String labelText,
+    IconData? prefixIcon,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+    VoidCallback? onTap,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      readOnly: readOnly,
+      onTap: onTap,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: const TextStyle(color: Colors.white60),
+        prefixIcon: prefixIcon != null
+            ? Icon(prefixIcon, color: accentColor)
+            : null,
+        filled: true,
+        fillColor: backgroundColor.withAlpha((0.8 * 255).toInt()),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: accentColor, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white24, width: 1),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Update Profile')),
+      appBar: AppBar(
+        title: const Text('Update Profile'),
+        backgroundColor: backgroundColor,
+      ),
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
           Padding(
@@ -193,87 +239,77 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                         backgroundImage: _profilePhoto != null
                             ? FileImage(_profilePhoto!)
                             : (_existingPhotoUrl != null
-                                      ? NetworkImage(_existingPhotoUrl!)
-                                      : const AssetImage(
-                                          'assets/default_profile.png',
-                                        ))
-                                  as ImageProvider,
+                                  ? NetworkImage(_existingPhotoUrl!)
+                                        as ImageProvider
+                                  : const AssetImage(
+                                      'assets/default_profile.png',
+                                    )),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.camera_alt),
+                        icon: const Icon(Icons.camera_alt, color: accentColor),
                         onPressed: _pickProfilePhoto,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    border: OutlineInputBorder(),
-                  ),
+                  labelText: 'Name',
+                  prefixIcon: Icons.person,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: dobController,
-                  decoration: const InputDecoration(
-                    labelText: 'Date of Birth',
-                    suffixIcon: Icon(Icons.calendar_today),
-                    border: OutlineInputBorder(),
-                  ),
+                  labelText: 'Date of Birth',
+                  prefixIcon: Icons.calendar_today,
                   readOnly: true,
                   onTap: _selectDateOfBirth,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Address',
-                    border: OutlineInputBorder(),
-                  ),
+                  labelText: 'Address',
+                  prefixIcon: Icons.home,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: locationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Location / City',
-                    border: OutlineInputBorder(),
-                  ),
+                  labelText: 'Location / City',
+                  prefixIcon: Icons.location_city,
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                _buildTextField(
                   controller: pincodeController,
+                  labelText: 'Pincode',
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Pincode',
-                    border: OutlineInputBorder(),
-                  ),
+                  prefixIcon: Icons.pin_drop,
                 ),
                 const SizedBox(height: 24),
-                TextField(
-                  controller: mobileController, // ✅ only mobile
+                _buildTextField(
+                  controller: mobileController,
+                  labelText: 'Mobile Number',
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Mobile Number',
-                    border: OutlineInputBorder(),
-                  ),
+                  prefixIcon: Icons.phone_android,
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _saveProfile,
-                  child: const Text('Save'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.black87,
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.black87)
+                      : const Text('Save'),
                 ),
               ],
             ),
           ),
-          if (_isLoading)
-            Container(
-              color: Colors.black54,
-              child: const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
-            ),
         ],
       ),
     );
