@@ -1,0 +1,19 @@
+{
+  "name": "user_profile_photos/SbFZYV6xSjZSh3y99nqAdFLQmno2.jpg",
+  "bucket": "myfixpal-1.firebasestorage.app",
+  "metageneration": 1,
+  "generation": 1757444500111,
+  "contentType": "application/octet-stream",
+  "storageClass": "STANDARD",
+  "contentDisposition": "inline",
+  "downloadTokens": [
+    "8f098ecb-a28c-432e-898c-fb7f58c8b13a"
+  ],
+  "etag": "qf4piEjEEJHUWMtyot1Xa65o9GM",
+  "customMetadata": {},
+  "timeCreated": "2025-09-09T19:01:40.111Z",
+  "updated": "2025-09-09T19:01:40.111Z",
+  "size": 8651,
+  "md5Hash": "5hFLW9BVA8p4ZOEEDOwRdw==",
+  "crc32c": "2654390823"
+}

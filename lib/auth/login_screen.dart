@@ -52,78 +52,101 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> loginUser() async {
-    if (emailController.text.trim().isEmpty ||
-        passwordController.text.isEmpty) {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email and password')),
+        const SnackBar(content: Text("Please enter email and password")),
       );
       return;
     }
 
     setState(() => isLoading = true);
+
     try {
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text,
+        email: email,
+        password: password,
       );
+
       if (!mounted) return;
       User? user = userCredential.user;
+
       if (user != null) {
-        DocumentSnapshot userDoc = await _firestore
-            .collection('users')
+        // Check if user exists in workers collection
+        DocumentSnapshot workerDoc = await _firestore
+            .collection('workers')
             .doc(user.uid)
             .get();
-        if (!mounted) return;
-        if (userDoc.exists) {
-          bool isWorker = userDoc.get('isWorker') ?? false;
+
+        if (workerDoc.exists) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.pushNamedAndRemoveUntil(
               context,
-              isWorker ? '/home_worker' : '/home_user',
+              '/home_worker',
               (route) => false,
             );
           });
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('User data not found. Please register.'),
-            ),
-          );
+          // Check users collection
+          DocumentSnapshot userDoc = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
+          if (userDoc.exists) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/home_user',
+                (route) => false,
+              );
+            });
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("User record not found. Please contact support."),
+              ),
+            );
+            await _auth.signOut();
+          }
         }
       }
     } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
       String message = 'Login failed';
       if (e.code == 'user-not-found') {
         message = 'No user found for that email.';
       } else if (e.code == 'wrong-password') {
-        message = 'Wrong password provided.';
+        message = 'Incorrect password.';
       }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('An unexpected error occurred.')),
       );
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color backgroundColor = Color(0xFF222733); // dark blue/gray
-    const Color accentColor = Color(0xFFFFD34E); // yellow
-    const Color primaryColor = Color(0xFF00796B); // teal
+    const Color backgroundColor = Color(0xFF222733);
+    const Color accentColor = Color(0xFFFFD34E);
+    const Color primaryColor = Color(0xFF00796B);
 
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('Login'),
+        title: const Text("Login"),
         backgroundColor: primaryColor,
         elevation: 0,
       ),
@@ -139,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen>
                 SizedBox(
                   height: 200,
                   child: Image.asset(
-                    'assets/myfixpal3.png', // Ensure this path is correct and registered in pubspec.yaml
+                    "assets/myfixpal3.png", // Replace with your logo path
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -149,11 +172,11 @@ class _LoginScreenState extends State<LoginScreen>
                   keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Email',
+                    labelText: "Email",
                     labelStyle: const TextStyle(color: Colors.white60),
                     prefixIcon: Icon(Icons.email, color: accentColor),
                     filled: true,
-                    fillColor: backgroundColor.withAlpha((0.8 * 255).toInt()),
+                    fillColor: backgroundColor.withOpacity(0.8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -174,11 +197,11 @@ class _LoginScreenState extends State<LoginScreen>
                   style: const TextStyle(color: Colors.white),
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: "Password",
                     labelStyle: const TextStyle(color: Colors.white60),
                     prefixIcon: Icon(Icons.lock, color: accentColor),
                     filled: true,
-                    fillColor: backgroundColor.withAlpha((0.8 * 255).toInt()),
+                    fillColor: backgroundColor.withOpacity(0.8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -209,28 +232,26 @@ class _LoginScreenState extends State<LoginScreen>
                 const SizedBox(height: 20),
                 isLoading
                     ? const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                        valueColor: AlwaysStoppedAnimation(accentColor),
                       )
                     : ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: accentColor,
-                          foregroundColor: Colors.black87,
+                          foregroundColor: Colors.black,
                           minimumSize: const Size(double.infinity, 48),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         onPressed: loginUser,
-                        child: const Text('Login'),
+                        child: const Text("Login"),
                       ),
                 TextButton(
                   onPressed: () {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      Navigator.pushNamed(context, '/register');
-                    });
+                    Navigator.pushNamed(context, "/register");
                   },
                   child: const Text(
-                    'New user? Register here',
+                    "Don't have an account? Register",
                     style: TextStyle(color: Colors.white70),
                   ),
                 ),

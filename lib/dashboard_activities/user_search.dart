@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:myfixpal/dashboard_activities/user_profile_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ServiceBrowseScreen extends StatefulWidget {
   const ServiceBrowseScreen({super.key});
@@ -29,12 +28,16 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Label outside dropdown
+            const Text(
+              'Select Profession',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
             DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Select Profession',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(border: OutlineInputBorder()),
               value: selectedProfession,
               onChanged: (value) {
                 setState(() {
@@ -48,14 +51,19 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                   .toList(),
             ),
             const SizedBox(height: 12),
+            // Label outside pincode
+            const Text(
+              'Enter Pincode',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
             TextField(
               controller: pincodeController,
+              keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: 'Enter Pincode',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.location_on),
               ),
-              keyboardType: TextInputType.number,
               onChanged: (_) {
                 setState(() {});
               },
@@ -80,12 +88,18 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                           return const Center(child: Text('No workers found'));
                         }
 
+                        // Debug print for Firestore docs fetched
+                        for (var doc in snapshot.data!.docs) {
+                          debugPrint(
+                            'Worker doc: ${doc.id}, profession: ${doc['profession']}, pincode: ${doc['pincode']}',
+                          );
+                        }
+
                         final filteredDocs = (pincodeController.text.isNotEmpty)
-                            ? snapshot.data!.docs.where(
-                                (doc) => doc['pincode'].toString().startsWith(
-                                  pincodeController.text,
-                                ),
-                              )
+                            ? snapshot.data!.docs.where((doc) {
+                                final pin = doc['pincode']?.toString() ?? '';
+                                return pin.startsWith(pincodeController.text);
+                              }).toList()
                             : snapshot.data!.docs;
 
                         if (filteredDocs.isEmpty) {
@@ -115,7 +129,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                 subtitle: ratingCount > 0
                                     ? Row(
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.star,
                                             color: Colors.amber,
                                             size: 16,
@@ -230,75 +244,5 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
     await FirebaseFirestore.instance
         .collection('service_requests')
         .add(requestData);
-  }
-}
-
-class WorkerChatScreen extends StatelessWidget {
-  const WorkerChatScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text('Worker Communication'));
-}
-
-class ReviewRatingScreen extends StatelessWidget {
-  const ReviewRatingScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text('Review & Rating'));
-}
-
-class HomeDashboardUser extends StatefulWidget {
-  const HomeDashboardUser({super.key});
-
-  @override
-  State<HomeDashboardUser> createState() => _HomeDashboardUserState();
-}
-
-class _HomeDashboardUserState extends State<HomeDashboardUser> {
-  int _currentIndex = 0;
-
-  // The actual screens for each tab, replacing UserProfileScreen placeholder with imported one
-  final List<Widget> _screens = const [
-    ServiceBrowseScreen(),
-    WorkerChatScreen(),
-    ReviewRatingScreen(),
-    UserProfileScreen(), // Real screen imported
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-
-    if (userId == null) {
-      return const Scaffold(body: Center(child: Text('No user logged in')));
-    }
-
-    return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        selectedItemColor: const Color(0xFFFFD34E), // Accent color
-        unselectedItemColor: Colors.white70,
-        backgroundColor: const Color(
-          0xFF222733,
-        ), // Background color similar to your branding
-        onTap: (index) {
-          setState(() => _currentIndex = index);
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Services'),
-          BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Chats'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.star_border),
-            label: 'Reviews',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
-      ),
-    );
   }
 }

@@ -29,7 +29,7 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('users')
+          .collection('workers') // <-- Changed to 'workers' collection
           .doc(userId)
           .snapshots(),
       builder: (context, snapshot) {
@@ -40,13 +40,13 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
         }
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return const Scaffold(
-            body: Center(child: Text('User data not found')),
+            body: Center(child: Text('Worker data not found')),
           );
         }
 
         final data = snapshot.data!.data()! as Map<String, dynamic>;
 
-        final _existingPhotoUrl = data['profilePhotoUrl'];
+        final existingPhotoUrl = data['profilePhotoUrl'];
         final workerName = data['fullName'] ?? "Worker";
         final workerMobile = data['mobile'] ?? "";
 
@@ -59,8 +59,10 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
                 UserAccountsDrawerHeader(
                   currentAccountPicture: CircleAvatar(
                     radius: 40,
-                    backgroundImage: _existingPhotoUrl != null
-                        ? NetworkImage(_existingPhotoUrl)
+                    backgroundImage:
+                        (existingPhotoUrl != null &&
+                            existingPhotoUrl.isNotEmpty)
+                        ? NetworkImage(existingPhotoUrl)
                         : const AssetImage('assets/default_profile.png')
                               as ImageProvider,
                   ),

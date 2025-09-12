@@ -103,25 +103,31 @@ class _RegisterScreenState extends State<RegisterScreen>
       User? user = userCredential.user;
 
       if (user != null) {
-        Map<String, dynamic> userData = {
-          'uid': user.uid,
-          'email': emailController.text.trim(),
-          'fullName': fullNameController.text.trim(),
-          'mobile': mobileController.text.trim(),
-          'dob': selectedDob != null ? dobText : null,
-          'isWorker': isWorker,
-        };
-
-        if (isWorker) {
-          userData.addAll({
+        if (!isWorker) {
+          // Regular user: write into 'users' collection only
+          await _firestore.collection('users').doc(user.uid).set({
+            'uid': user.uid,
+            'email': emailController.text.trim(),
+            'fullName': fullNameController.text.trim(),
+            'mobile': mobileController.text.trim(),
+            'dob': selectedDob != null ? dobText : null,
+            'isWorker': false,
+          });
+        } else {
+          // Worker: write into 'workers' collection only
+          await _firestore.collection('workers').doc(user.uid).set({
+            'uid': user.uid,
+            'email': emailController.text.trim(),
+            'fullName': fullNameController.text.trim(),
+            'mobile': mobileController.text.trim(),
+            'dob': selectedDob != null ? dobText : null,
+            'isWorker': true,
             'location': locationController.text.trim(),
             'pincode': pincodeController.text.trim(),
             'profession': selectedProfession,
             'aadhaar': aadhaarController.text.trim(),
           });
         }
-
-        await _firestore.collection('users').doc(user.uid).set(userData);
 
         if (!mounted) return;
 

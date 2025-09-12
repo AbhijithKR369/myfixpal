@@ -24,28 +24,41 @@ class _StartupScreenState extends State<StartupScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacementNamed(context, '/login');
       });
-    } else {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      if (!mounted) return;
-
-      if (doc.exists) {
-        bool isWorker = doc.get('isWorker') ?? false;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.pushReplacementNamed(
-            context,
-            isWorker ? '/home_worker' : '/home_user',
-          );
-        });
-      } else {
-        await FirebaseAuth.instance.signOut();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.pushReplacementNamed(context, '/login');
-        });
-      }
+      return;
     }
+
+    // Check worker data first
+    final workerDoc = await FirebaseFirestore.instance
+        .collection('workers')
+        .doc(user.uid)
+        .get();
+    if (!mounted) return;
+    if (workerDoc.exists) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/home_worker');
+      });
+      return;
+    }
+
+    // Check regular user data
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    if (!mounted) return;
+    if (userDoc.exists) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/home_user');
+      });
+      return;
+    }
+
+    // No user data found; sign out and navigate to login
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Navigator.pushReplacementNamed(context, '/login');
+    });
   }
 
   @override
