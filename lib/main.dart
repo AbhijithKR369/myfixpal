@@ -5,18 +5,19 @@ import 'firebase_options.dart'; // Generated Firebase options
 import 'home_dashboard_worker.dart';
 import 'home_dashboard_user.dart';
 import 'auth/register_screen.dart';
-import 'auth/login_screen.dart'; // Import your login screen
+import 'auth/login_screen.dart'; // Login screen
 import 'update_profile_screen.dart';
 import 'update_profile_worker.dart';
 import 'startup_screen.dart';
-import 'splash_screen.dart'; // Import the new splash screen
+import 'splash_screen.dart'; // Splash screen
+import 'dashboard_activities/service_browse.dart'; // ✅ Import ServiceBrowseScreen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Enable Storage emulator locally for development/testing
-  // Remove or comment this line before releasing to production
+  // ⚠️ Remove or comment this line before releasing to production
   FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
 
   runApp(const MyApp());

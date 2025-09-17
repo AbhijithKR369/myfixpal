@@ -122,7 +122,7 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
                     labelText: 'Select Profession',
                     border: OutlineInputBorder(),
                   ),
-                  value: selectedProfession,
+                  initialValue: selectedProfession,
                   items: professions
                       .map(
                         (job) => DropdownMenuItem(value: job, child: Text(job)),

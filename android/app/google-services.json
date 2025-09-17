@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "1091650049239",
+    "firebase_url": "https://myfixpal-1-default-rtdb.firebaseio.com",
     "project_id": "myfixpal-1",
     "storage_bucket": "myfixpal-1.firebasestorage.app"
   },
