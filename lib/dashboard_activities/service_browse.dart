@@ -263,16 +263,6 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Menu pressed')));
-          // Add action to open drawer or menu
-        },
-        backgroundColor: kPrimaryColor,
-        child: const Icon(Icons.menu),
-      ),
     );
   }
 }
@@ -511,30 +501,37 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
       ).showSnackBar(const SnackBar(content: Text('Login required')));
       return;
     }
+    // Track overall completion state
+    bool reviewSuccess = false;
+    bool ratingUpdateSuccess = false;
 
     try {
-      // 1) Add review doc
-      final reviewData = {
+      // Add review document
+      await FirebaseFirestore.instance.collection('worker_reviews').add({
         'userId': user.uid,
         'workerId': widget.workerId,
         'rating': rating,
         'review': reviewController.text.trim(),
         'timestamp': FieldValue.serverTimestamp(),
-      };
+      });
+      reviewSuccess = true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to submit review: $e')));
+      }
+      return;
+    }
 
-      await FirebaseFirestore.instance
-          .collection('worker_reviews')
-          .add(reviewData);
-
-      // 2) Recalculate average and count from all reviews for this worker
+    try {
+      // Recalculate and update worker rating info
       final reviewsSnap = await FirebaseFirestore.instance
           .collection('worker_reviews')
           .where('workerId', isEqualTo: widget.workerId)
           .get();
-
       final allReviews = reviewsSnap.docs;
       final int newCount = allReviews.length;
-
       double total = 0.0;
       for (final rdoc in allReviews) {
         final rv = rdoc.data()['rating'];
@@ -546,36 +543,39 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
           total += double.tryParse(rv?.toString() ?? '0') ?? 0.0;
         }
       }
-
-      final double newAvg = newCount > 0 ? (total / newCount) : 0.0;
-
-      // 3) Update worker document (merge so other fields preserved)
+      final double newAvg = newCount > 0 ? total / newCount : 0.0;
       final workerRef = FirebaseFirestore.instance
           .collection('workers')
           .doc(widget.workerId);
-
       await workerRef.set({
         'rating': newAvg,
         'ratingCount': newCount,
       }, SetOptions(merge: true));
-
+      ratingUpdateSuccess = true;
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Review submitted')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Review was saved, but updating overall rating failed: $e',
+            ),
+          ),
+        );
+      }
+    }
 
-        Navigator.of(context).pop();
-      }
-    } catch (e, st) {
-      // show error for visibility and log stacktrace to console
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to submit review: $e')));
-      }
-      // also print to console so you can inspect errors in debug console
-      // ignore: avoid_print
-      print('Error submitting rating: $e\n$st');
+    if (!mounted) return;
+
+    if (reviewSuccess && ratingUpdateSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Review submitted and ratings updated.')),
+      );
+      Navigator.of(context).pop();
+    }
+    // Optionally: only pop if review succeeded and warn separately if rating update failed
+    else if (reviewSuccess) {
+      // Optionally keep user on the page or pop with a warning
+      // Navigator.of(context).pop();
     }
   }
 }
