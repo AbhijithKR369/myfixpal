@@ -32,7 +32,6 @@ class WorkerJobsScreen extends StatelessWidget {
             );
           }
 
-          // ✅ Ensure only pending/accepted
           final docs = snap.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final s = data['status'] ?? 'pending';
@@ -54,13 +53,10 @@ class WorkerJobsScreen extends StatelessWidget {
               final job = docs[i].data() as Map<String, dynamic>;
               final userId = job['userId'];
 
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(userId)
-                    .get(),
-                builder: (context, userSnap) {
-                  if (!userSnap.hasData || !userSnap.data!.exists) {
+              return FutureBuilder<Map<String, dynamic>?>(
+                future: _getUserOrWorker(userId),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data == null) {
                     return const ListTile(
                       title: Text(
                         'User not found',
@@ -69,7 +65,7 @@ class WorkerJobsScreen extends StatelessWidget {
                     );
                   }
 
-                  final user = userSnap.data!.data() as Map<String, dynamic>;
+                  final user = snapshot.data!;
                   return Card(
                     color: backgroundColor,
                     shape: RoundedRectangleBorder(
@@ -144,6 +140,29 @@ class WorkerJobsScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  /// Tries to fetch from users/, falls back to workers/
+  Future<Map<String, dynamic>?> _getUserOrWorker(String userId) async {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
+
+    if (userDoc.exists) {
+      return userDoc.data() as Map<String, dynamic>;
+    }
+
+    final workerDoc = await FirebaseFirestore.instance
+        .collection('workers')
+        .doc(userId)
+        .get();
+
+    if (workerDoc.exists) {
+      return workerDoc.data() as Map<String, dynamic>;
+    }
+
+    return null;
   }
 
   void _showJobDetailModal(
@@ -238,7 +257,7 @@ class WorkerJobsScreen extends StatelessWidget {
                         minimumSize: const Size.fromHeight(44),
                       ),
                       onPressed: () async {
-                        Navigator.pop(context); // close modal instantly
+                        Navigator.pop(context);
                         await ref.update({'status': 'accepted'});
                       },
                     ),
@@ -254,8 +273,54 @@ class WorkerJobsScreen extends StatelessWidget {
                         minimumSize: const Size.fromHeight(44),
                       ),
                       onPressed: () async {
-                        Navigator.pop(context); // close modal instantly
-                        await ref.update({'status': 'rejected'});
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Confirm Reject'),
+                            content: const Text(
+                              'Are you sure you want to reject and permanently delete this request?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Yes, Reject'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmed == true) {
+                          try {
+                            await ref.delete();
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Job request rejected and deleted',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error deleting request: $e'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        }
                       },
                     ),
                   ),
