@@ -52,7 +52,7 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
     setState(() => _isLoading = true);
 
     final doc = await FirebaseFirestore.instance
-        .collection('users')
+        .collection('workers')
         .doc(user.uid)
         .get();
     if (doc.exists) {
@@ -170,10 +170,11 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
         'profession': selectedProfession,
         if (photoUrl != null) 'profilePhotoUrl': photoUrl,
         'updatedAt': FieldValue.serverTimestamp(),
+        'isWorker': true, // 🔑 required by Firestore rules
       };
 
       await FirebaseFirestore.instance
-          .collection('users')
+          .collection('workers')
           .doc(user.uid)
           .set(updatedData, SetOptions(merge: true));
 
@@ -231,9 +232,6 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
       ),
     );
   }
-
-  // static const Color backgroundColor = Color(0xFF222733);
-  // static const Color accentColor = Color(0xFFFFD34E);
 
   @override
   Widget build(BuildContext context) {
@@ -331,7 +329,7 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
                     labelText: 'Job / Profession',
                     border: OutlineInputBorder(),
                   ),
-                  initialValue: selectedProfession,
+                  value: selectedProfession,
                   items: professions
                       .map(
                         (job) => DropdownMenuItem(value: job, child: Text(job)),

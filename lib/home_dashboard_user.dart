@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:myfixpal/dashboard_activities/user_profile_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-// Import ServiceBrowseScreen from its own file
 import 'dashboard_activities/service_browse.dart';
 
-class WorkerChatScreen extends StatelessWidget {
-  const WorkerChatScreen({super.key});
+// Placeholder for the notification screen
+class NotificationScreen extends StatelessWidget {
+  const NotificationScreen({super.key});
 
   @override
   Widget build(BuildContext context) =>
-      const Center(child: Text('Worker Communication'));
+      const Center(child: Text('Notifications'));
 }
 
-class ReviewRatingScreen extends StatelessWidget {
-  const ReviewRatingScreen({super.key});
+// Placeholder for the top-rated workers screen
+class TopRatedWorkersScreen extends StatelessWidget {
+  const TopRatedWorkersScreen({super.key});
 
   @override
   Widget build(BuildContext context) =>
-      const Center(child: Text('Review & Rating'));
+      const Center(child: Text('Top Rated Workers'));
 }
 
 class HomeDashboardUser extends StatefulWidget {
@@ -31,11 +31,11 @@ class HomeDashboardUser extends StatefulWidget {
 class _HomeDashboardUserState extends State<HomeDashboardUser> {
   int _currentIndex = 0;
 
-  // Tabs/screens for the bottom navigation bar
+  // Screens for the bottom navigation bar
   final List<Widget> _screens = const [
     ServiceBrowseScreen(), // Imported from service_browse.dart
-    WorkerChatScreen(),
-    ReviewRatingScreen(),
+    NotificationScreen(),
+    TopRatedWorkersScreen(),
     UserProfileScreen(), // Imported from user_profile_screen.dart
   ];
 
@@ -60,11 +60,11 @@ class _HomeDashboardUserState extends State<HomeDashboardUser> {
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Services'),
-          BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Chats'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.star_border),
-            label: 'Reviews',
+            icon: Icon(Icons.notifications),
+            label: 'Notifications',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Top Rated'),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: 'Profile',

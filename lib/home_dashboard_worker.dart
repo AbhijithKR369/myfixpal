@@ -2,175 +2,104 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// Import your existing ServiceBrowseScreen here
+import 'dashboard_activities/service_browse.dart';
+import 'dashboard_activities/worker_profile_screen.dart'; // Use this import only
+
+// Placeholder for Notifications
+class WorkerNotificationScreen extends StatelessWidget {
+  const WorkerNotificationScreen({super.key});
+  @override
+  Widget build(BuildContext context) =>
+      const Center(child: Text('Notifications'));
+}
+
+// Placeholder for Worker Jobs/Requests
+class WorkerJobListScreen extends StatelessWidget {
+  const WorkerJobListScreen({super.key});
+  @override
+  Widget build(BuildContext context) =>
+      const Center(child: Text('Job List & Requests'));
+}
+
+// Remove this placeholder WorkerProfileScreen class completely.
+
+// Rest of your code unchanged...
+
 class HomeDashboardWorker extends StatefulWidget {
   const HomeDashboardWorker({super.key});
-
   @override
   State<HomeDashboardWorker> createState() => _HomeDashboardWorkerState();
 }
 
 class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
-  final TextEditingController pincodeController = TextEditingController();
-  String? selectedProfession;
-  final List<String> professions = [
-    'Painter',
-    'Electrician',
-    'Carpenter',
-    'Plumber',
+  int _currentIndex = 0;
+
+  // Exclude profile screen from tab views because we will navigate to it separately
+  late final List<Widget> _screens = [
+    const ServiceBrowseScreen(),
+    const WorkerNotificationScreen(),
+    const WorkerJobListScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final userId = FirebaseAuth.instance.currentUser?.uid;
-
     if (userId == null) {
       return const Scaffold(body: Center(child: Text('No user logged in')));
     }
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('workers') // <-- Changed to 'workers' collection
+          .collection('workers')
           .doc(userId)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const Scaffold(
-            body: Center(child: Text('Worker data not found')),
-          );
-        }
-
-        final data = snapshot.data!.data()! as Map<String, dynamic>;
-
-        final existingPhotoUrl = data['profilePhotoUrl'];
-        final workerName = data['fullName'] ?? "Worker";
-        final workerMobile = data['mobile'] ?? "";
+        final String workerName =
+            (snapshot.hasData && snapshot.data?.data() != null)
+            ? ((snapshot.data!.data() as Map<String, dynamic>)['fullName'] ??
+                  'Worker')
+            : 'Worker';
 
         return Scaffold(
-          appBar: AppBar(title: const Text("MyFixPal Worker")),
-          drawer: Drawer(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                UserAccountsDrawerHeader(
-                  currentAccountPicture: CircleAvatar(
-                    radius: 40,
-                    backgroundImage:
-                        (existingPhotoUrl != null &&
-                            existingPhotoUrl.isNotEmpty)
-                        ? NetworkImage(existingPhotoUrl)
-                        : const AssetImage('assets/default_profile.png')
-                              as ImageProvider,
+          appBar: AppBar(title: Text("MyFixPal Worker - $workerName")),
+          body: _screens[_currentIndex],
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _currentIndex,
+            selectedItemColor: const Color(0xFFFFD34E),
+            unselectedItemColor: Colors.white70,
+            backgroundColor: const Color(0xFF222733),
+            onTap: (index) {
+              if (index == 3) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const WorkerProfileScreen(),
                   ),
-                  accountName: Text(workerName),
-                  accountEmail: Text(workerMobile),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.person),
-                  title: const Text('Update Profile'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/update_profile_worker');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: const Text('Logout'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await FirebaseAuth.instance.signOut();
-                    if (mounted) {
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        '/login',
-                        (route) => false,
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Welcome, $workerName!",
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  "Search Workers",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Select Profession',
-                    border: OutlineInputBorder(),
-                  ),
-                  initialValue: selectedProfession,
-                  items: professions
-                      .map(
-                        (job) => DropdownMenuItem(value: job, child: Text(job)),
-                      )
-                      .toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      selectedProfession = val;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: pincodeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Enter Pincode',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () {
-                    if (selectedProfession != null &&
-                        pincodeController.text.isNotEmpty) {
-                      Navigator.pushNamed(
-                        context,
-                        '/search_results',
-                        arguments: {
-                          'profession': selectedProfession,
-                          'pincode': pincodeController.text,
-                        },
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Please select profession and enter pincode',
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Search'),
-                ),
-              ],
-            ),
+                );
+              } else {
+                setState(() => _currentIndex = index);
+              }
+            },
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.miscellaneous_services),
+                label: 'Services',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.notifications),
+                label: 'Notifications',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.assignment),
+                label: 'Jobs',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline),
+                label: 'Profile',
+              ),
+            ],
           ),
         );
       },

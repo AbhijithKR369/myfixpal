@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class UserProfileScreen extends StatelessWidget {
-  const UserProfileScreen({super.key});
+class WorkerProfileScreen extends StatelessWidget {
+  const WorkerProfileScreen({super.key});
 
   static const Color backgroundColor = Color(0xFF222733);
   static const Color accentColor = Color(0xFFFFD34E);
@@ -149,12 +149,12 @@ class UserProfileScreen extends StatelessWidget {
     final userId = FirebaseAuth.instance.currentUser?.uid;
 
     if (userId == null) {
-      return const Scaffold(body: Center(child: Text('No user logged in')));
+      return const Scaffold(body: Center(child: Text('No worker logged in')));
     }
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('users')
+          .collection('workers')
           .doc(userId)
           .snapshots(),
       builder: (context, snapshot) {
@@ -170,7 +170,7 @@ class UserProfileScreen extends StatelessWidget {
             backgroundColor: backgroundColor,
             body: Center(
               child: Text(
-                'User data not found',
+                'Worker data not found',
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -180,14 +180,14 @@ class UserProfileScreen extends StatelessWidget {
         final data = snapshot.data!.data()! as Map<String, dynamic>;
 
         final existingPhotoUrl = data['profilePhotoUrl'];
-        final userName = data['fullName'] ?? "User";
-        final userMobile = data['mobile'] ?? "";
-        final userEmail = FirebaseAuth.instance.currentUser?.email ?? "";
+        final workerName = data['fullName'] ?? '';
+        final workerMobile = data['mobile'] ?? '';
+        final workerEmail = data['email'] ?? '';
 
         return Scaffold(
           backgroundColor: const Color.fromARGB(255, 17, 37, 40),
           appBar: AppBar(
-            title: const Text("MyFixPal Profile"),
+            title: const Text("MyFixPal Worker Profile"),
             backgroundColor: const Color.fromARGB(255, 10, 133, 227),
           ),
           body: ListView(
@@ -205,7 +205,7 @@ class UserProfileScreen extends StatelessWidget {
               const SizedBox(height: 20),
               Center(
                 child: Text(
-                  userName,
+                  workerName,
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -216,19 +216,18 @@ class UserProfileScreen extends StatelessWidget {
               const SizedBox(height: 4),
               Center(
                 child: Text(
-                  userEmail,
+                  workerEmail,
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 4),
               Center(
                 child: Text(
-                  userMobile,
+                  workerMobile,
                   style: const TextStyle(fontSize: 18, color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 30),
-
               ListTile(
                 leading: const Icon(Icons.edit, color: accentColor),
                 title: const Text(
@@ -236,7 +235,8 @@ class UserProfileScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.white),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 0),
-                onTap: () => Navigator.pushNamed(context, '/update_profile'),
+                onTap: () =>
+                    Navigator.pushNamed(context, '/update_profile_worker'),
               ),
               ListTile(
                 leading: const Icon(Icons.lock_reset, color: accentColor),
@@ -246,15 +246,6 @@ class UserProfileScreen extends StatelessWidget {
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 0),
                 onTap: () => _changePassword(context),
-              ),
-              ListTile(
-                leading: const Icon(Icons.history, color: accentColor),
-                title: const Text(
-                  'View Past Activity / Requests',
-                  style: TextStyle(color: Colors.white),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 0),
-                onTap: () => Navigator.pushNamed(context, '/user_requests'),
               ),
               ListTile(
                 leading: const Icon(Icons.support_agent, color: accentColor),
@@ -270,7 +261,6 @@ class UserProfileScreen extends StatelessWidget {
                 onTap: () => _launchGmail(context),
               ),
               const Divider(color: Colors.white30, height: 30),
-
               ListTile(
                 leading: const Icon(Icons.logout, color: accentColor),
                 title: const Text(
