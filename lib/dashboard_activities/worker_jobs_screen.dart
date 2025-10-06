@@ -22,7 +22,7 @@ class WorkerJobsScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('work_requests')
             .where('workerId', isEqualTo: workerId)
-            .where('status', whereIn: ['pending', 'accepted'])
+            .where('status', whereIn: ['pending', 'accepted', 'completed'])
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snap) {
@@ -35,7 +35,7 @@ class WorkerJobsScreen extends StatelessWidget {
           final docs = snap.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final s = data['status'] ?? 'pending';
-            return s == 'pending' || s == 'accepted';
+            return ['pending', 'accepted', 'completed'].contains(s);
           }).toList();
 
           if (docs.isEmpty) {
@@ -113,6 +113,8 @@ class WorkerJobsScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: (job['status'] == 'accepted')
                               ? Colors.green
+                              : (job['status'] == 'completed')
+                              ? Colors.blue
                               : accentColor,
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -142,25 +144,20 @@ class WorkerJobsScreen extends StatelessWidget {
     );
   }
 
-  /// Tries to fetch from users/, falls back to workers/
   Future<Map<String, dynamic>?> _getUserOrWorker(String userId) async {
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
         .get();
 
-    if (userDoc.exists) {
-      return userDoc.data() as Map<String, dynamic>;
-    }
+    if (userDoc.exists) return userDoc.data() as Map<String, dynamic>;
 
     final workerDoc = await FirebaseFirestore.instance
         .collection('workers')
         .doc(userId)
         .get();
 
-    if (workerDoc.exists) {
-      return workerDoc.data() as Map<String, dynamic>;
-    }
+    if (workerDoc.exists) return workerDoc.data() as Map<String, dynamic>;
 
     return null;
   }
@@ -244,7 +241,9 @@ class WorkerJobsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            if (status == 'pending')
+
+            // 🔹 Different buttons depending on job status
+            if (status == 'pending') ...[
               Row(
                 children: [
                   Expanded(
@@ -325,18 +324,64 @@ class WorkerJobsScreen extends StatelessWidget {
                     ),
                   ),
                 ],
-              )
-            else
+              ),
+            ] else if (status == 'accepted') ...[
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Mark as Completed'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Mark as Completed'),
+                      content: const Text(
+                        'Are you sure you want to mark this job as completed?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Confirm'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirmed == true) {
+                    await ref.update({'status': 'completed'});
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Job marked as completed!'),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: Colors.blueAccent,
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+            ] else ...[
               Center(
                 child: Text(
                   "STATUS: ${status.toUpperCase()}",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
-                    color: status == 'accepted' ? Colors.green : Colors.red,
+                    color: Colors.blueAccent,
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),

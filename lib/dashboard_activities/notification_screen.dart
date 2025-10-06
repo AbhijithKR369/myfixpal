@@ -70,6 +70,7 @@ class NotificationScreen extends StatelessWidget {
               Color color;
               String message;
 
+              // ✅ Status-based notifications
               if (status == 'accepted') {
                 icon = Icons.check_circle;
                 color = Colors.greenAccent;
@@ -78,6 +79,11 @@ class NotificationScreen extends StatelessWidget {
                 icon = Icons.cancel;
                 color = Colors.redAccent;
                 message = 'Your job request was rejected by $workerName';
+              } else if (status == 'completed' || status == 'complete') {
+                icon = Icons.done_all;
+                color = Colors.blueAccent;
+                message =
+                    'Your job with $workerName has been marked as completed';
               } else {
                 icon = Icons.hourglass_empty;
                 color = Colors.amberAccent;
@@ -131,7 +137,6 @@ class NotificationScreen extends StatelessWidget {
                               ),
                             ),
                             onPressed: () async {
-                              // Step 1: Confirm reschedule
                               final confirmed = await showDialog<bool>(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
@@ -156,31 +161,29 @@ class NotificationScreen extends StatelessWidget {
                               if (confirmed != true) return;
 
                               try {
-                                // Step 2: Update status to pending
                                 await FirebaseFirestore.instance
                                     .collection('work_requests')
                                     .doc(docs[index].id)
                                     .update({'status': 'pending'});
 
-                                // Step 3: Navigate to service request page
                                 if (context.mounted) {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => ServiceRequestScreen(
-                                        workerId: workerId,
-                                        workerName: workerName,
-                                        workerMobile: workerMobile,
-                                        prefilledDescription: description,
-                                        prefilledDate:
-                                            (data['requestedDate'] != null)
-                                            ? (data['requestedDate']
-                                                      as Timestamp)
-                                                  .toDate()
-                                            : null,
-                                        workRequestId: docs[index]
-                                            .id, // Pass the document ID here
-                                      ),
+                                      builder: (context) =>
+                                          ServiceRequestScreen(
+                                            workerId: workerId,
+                                            workerName: workerName,
+                                            workerMobile: workerMobile,
+                                            prefilledDescription: description,
+                                            prefilledDate:
+                                                (data['requestedDate'] != null)
+                                                ? (data['requestedDate']
+                                                          as Timestamp)
+                                                      .toDate()
+                                                : null,
+                                            workRequestId: docs[index].id,
+                                          ),
                                     ),
                                   );
                                 }
