@@ -1,18 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:myfixpal/dashboard_activities/user_profile_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dashboard_activities/service_browse.dart';
+import 'package:myfixpal/dashboard_activities/service_browse.dart';
+import 'package:myfixpal/dashboard_activities/notification_screen.dart';
+import 'package:myfixpal/dashboard_activities/user_profile_screen.dart';
 
-// Placeholder for the notification screen
-class NotificationScreen extends StatelessWidget {
-  const NotificationScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text('Notifications'));
-}
-
-// Placeholder for the top-rated workers screen
 class TopRatedWorkersScreen extends StatelessWidget {
   const TopRatedWorkersScreen({super.key});
 
@@ -33,10 +24,10 @@ class _HomeDashboardUserState extends State<HomeDashboardUser> {
 
   // Screens for the bottom navigation bar
   final List<Widget> _screens = const [
-    ServiceBrowseScreen(), // Imported from service_browse.dart
-    NotificationScreen(),
-    TopRatedWorkersScreen(),
-    UserProfileScreen(), // Imported from user_profile_screen.dart
+    ServiceBrowseScreen(), // ✅ Service browsing screen
+    NotificationScreen(), // ✅ Imported from dashboard_activities/notification_screen.dart
+    TopRatedWorkersScreen(), // ✅ Placeholder for now
+    UserProfileScreen(), // ✅ Profile screen
   ];
 
   @override

@@ -326,11 +326,19 @@ class ServiceRequestScreen extends StatefulWidget {
   final String workerName;
   final String workerMobile;
 
+  /// Optional for reschedule
+  final String? workRequestId;
+  final String? prefilledDescription;
+  final DateTime? prefilledDate;
+
   const ServiceRequestScreen({
     super.key,
     required this.workerId,
     required this.workerName,
     required this.workerMobile,
+    this.workRequestId,
+    this.prefilledDescription,
+    this.prefilledDate,
   });
 
   @override
@@ -345,6 +353,10 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.prefilledDescription != null) {
+      descriptionController.text = widget.prefilledDescription!;
+    }
+    selectedDate = widget.prefilledDate;
     descriptionController.addListener(() => setState(() {}));
   }
 
@@ -369,7 +381,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ListTile(
-                leading: const Icon(Icons.phone, color: kPrimaryColor),
+                leading: const Icon(Icons.phone, color: Colors.orange),
                 title: Text(
                   widget.workerMobile,
                   style: const TextStyle(fontWeight: FontWeight.bold),
@@ -388,7 +400,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                 final now = DateTime.now();
                 final date = await showDatePicker(
                   context: context,
-                  initialDate: now,
+                  initialDate: selectedDate ?? now,
                   firstDate: now,
                   lastDate: DateTime(now.year + 2),
                 );
@@ -409,9 +421,13 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
               onPressed:
                   (selectedDate != null &&
                       descriptionController.text.trim().isNotEmpty)
-                  ? _sendRequest
+                  ? _sendOrUpdateRequest
                   : null,
-              child: const Text('Send Request'),
+              child: Text(
+                widget.workRequestId == null
+                    ? 'Send Request'
+                    : 'Update Request',
+              ),
             ),
           ],
         ),
@@ -419,7 +435,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
     );
   }
 
-  Future<void> _sendRequest() async {
+  Future<void> _sendOrUpdateRequest() async {
     final user = _auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(
@@ -427,24 +443,44 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
       ).showSnackBar(const SnackBar(content: Text('Login required')));
       return;
     }
-    final requestData = {
-      'userId': user.uid,
-      'workerId': widget.workerId,
-      'workerMobile': widget.workerMobile,
-      'workerName': widget.workerName,
-      'requestedDate': selectedDate,
-      'fixDescription': descriptionController.text.trim(),
-      'timestamp': FieldValue.serverTimestamp(),
-      'status': 'pending',
-    };
-    await FirebaseFirestore.instance
-        .collection('work_requests')
-        .add(requestData);
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Request submitted')));
-      Navigator.of(context).pop();
+
+    if (widget.workRequestId == null) {
+      final requestData = {
+        'userId': user.uid,
+        'workerId': widget.workerId,
+        'workerMobile': widget.workerMobile,
+        'workerName': widget.workerName,
+        'requestedDate': selectedDate,
+        'fixDescription': descriptionController.text.trim(),
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'pending',
+      };
+
+      await FirebaseFirestore.instance
+          .collection('work_requests')
+          .add(requestData);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Request submitted')));
+        Navigator.of(context).pop();
+      }
+    } else {
+      // Reschedule (update request)
+      await FirebaseFirestore.instance
+          .collection('work_requests')
+          .doc(widget.workRequestId)
+          .update({
+            'requestedDate': selectedDate,
+            'fixDescription': descriptionController.text.trim(),
+            'status': 'pending',
+          });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Request updated')));
+        Navigator.of(context).pop();
+      }
     }
   }
 }

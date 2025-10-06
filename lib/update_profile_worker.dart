@@ -329,7 +329,7 @@ class _UpdateProfileWorkerScreenState extends State<UpdateProfileWorkerScreen> {
                     labelText: 'Job / Profession',
                     border: OutlineInputBorder(),
                   ),
-                  value: selectedProfession,
+                  initialValue: selectedProfession,
                   items: professions
                       .map(
                         (job) => DropdownMenuItem(value: job, child: Text(job)),
