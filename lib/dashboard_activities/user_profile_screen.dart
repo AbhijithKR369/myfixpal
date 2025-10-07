@@ -187,8 +187,16 @@ class UserProfileScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: const Color.fromARGB(255, 17, 37, 40),
           appBar: AppBar(
-            title: const Text("MyFixPal Profile"),
-            backgroundColor: const Color.fromARGB(255, 10, 133, 227),
+            title: const Text(
+              "USER Profile",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+              ),
+            ),
+            backgroundColor: const Color.fromARGB(255, 17, 37, 40),
+            iconTheme: const IconThemeData(color: Colors.white),
           ),
           body: ListView(
             padding: const EdgeInsets.all(16),

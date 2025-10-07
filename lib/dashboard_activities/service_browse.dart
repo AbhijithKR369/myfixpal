@@ -8,12 +8,12 @@ const Color kAccentColor = Color(0xFFFFD34E); // yellow
 const Color kBackgroundColor = Color(0xFF222733); // dark bg
 
 final ThemeData appTheme = ThemeData(
-  scaffoldBackgroundColor: kBackgroundColor,
+  scaffoldBackgroundColor: const Color.fromRGBO(34, 39, 51, 1),
   primaryColor: kPrimaryColor,
   colorScheme: ColorScheme.fromSeed(seedColor: kPrimaryColor),
   appBarTheme: const AppBarTheme(
     backgroundColor: kPrimaryColor,
-    foregroundColor: Colors.white,
+    foregroundColor: Color.fromARGB(255, 34, 35, 39),
     elevation: 2,
     centerTitle: true,
   ),
@@ -28,8 +28,8 @@ final ThemeData appTheme = ThemeData(
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: Colors.white,
-    labelStyle: const TextStyle(color: Colors.black87),
+    fillColor: const Color.fromARGB(255, 34, 35, 39),
+    labelStyle: const TextStyle(color: Color.fromARGB(221, 255, 255, 255)),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(20),
       borderSide: const BorderSide(color: kAccentColor, width: 2),
@@ -57,8 +57,6 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
   String? selectedProfession;
   final TextEditingController pincodeController = TextEditingController();
 
-  bool isResetting = false;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,13 +65,6 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Reset All Ratings',
-            onPressed: isResetting ? null : _confirmResetRatings,
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -253,80 +244,15 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
       ),
     );
   }
-
-  /// Show confirmation dialog before resetting ratings
-  Future<void> _confirmResetRatings() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset All Ratings?'),
-        content: const Text(
-          'This will clear all ratings and rating counts for all workers. Are you sure?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      _resetWorkerRatings();
-    }
-  }
-
-  /// Reset rating and ratingCount fields in all workers documents
-  Future<void> _resetWorkerRatings() async {
-    setState(() => isResetting = true);
-
-    try {
-      final workersSnap = await FirebaseFirestore.instance
-          .collection('workers')
-          .get();
-
-      final batch = FirebaseFirestore.instance.batch();
-
-      for (var doc in workersSnap.docs) {
-        batch.set(doc.reference, {
-          'rating': 0,
-          'ratingCount': 0,
-        }, SetOptions(merge: true));
-      }
-
-      await batch.commit();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All ratings have been reset')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error resetting ratings: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => isResetting = false);
-      }
-    }
-  }
 }
 
-/// ------------------- SERVICE REQUEST SCREEN -------------------
+/// ------------------- SERVICE REQUEST SCREEN ------------------
+
 class ServiceRequestScreen extends StatefulWidget {
   final String workerId;
   final String workerName;
   final String workerMobile;
 
-  /// Optional for reschedule
   final String? workRequestId;
   final String? prefilledDescription;
   final DateTime? prefilledDate;
@@ -357,7 +283,10 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
       descriptionController.text = widget.prefilledDescription!;
     }
     selectedDate = widget.prefilledDate;
-    descriptionController.addListener(() => setState(() {}));
+
+    descriptionController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -376,7 +305,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Card(
-              color: Colors.white,
+              color: const Color.fromARGB(255, 34, 35, 39),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -398,13 +327,13 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
               ),
               onPressed: () async {
                 final now = DateTime.now();
-                final date = await showDatePicker(
+                final picked = await showDatePicker(
                   context: context,
                   initialDate: selectedDate ?? now,
                   firstDate: now,
                   lastDate: DateTime(now.year + 2),
                 );
-                if (date != null) setState(() => selectedDate = date);
+                if (picked != null) setState(() => selectedDate = picked);
               },
             ),
             const SizedBox(height: 24),
@@ -415,6 +344,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                 labelText: 'Describe the issue',
                 prefixIcon: Icon(Icons.description),
               ),
+              // Removed setState here as controller listener handles it
             ),
             const Spacer(),
             ElevatedButton(
@@ -447,6 +377,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
     if (widget.workRequestId == null) {
       final requestData = {
         'userId': user.uid,
+        'createdBy': user.uid,
         'workerId': widget.workerId,
         'workerMobile': widget.workerMobile,
         'workerName': widget.workerName,
@@ -456,30 +387,47 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
         'status': 'pending',
       };
 
-      await FirebaseFirestore.instance
-          .collection('work_requests')
-          .add(requestData);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Request submitted')));
-        Navigator.of(context).pop();
+      try {
+        await FirebaseFirestore.instance
+            .collection('work_requests')
+            .add(requestData);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Request submitted successfully')),
+          );
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to submit request: $e')),
+          );
+        }
       }
     } else {
-      // Reschedule (update request)
-      await FirebaseFirestore.instance
-          .collection('work_requests')
-          .doc(widget.workRequestId)
-          .update({
-            'requestedDate': selectedDate,
-            'fixDescription': descriptionController.text.trim(),
-            'status': 'pending',
-          });
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Request updated')));
-        Navigator.of(context).pop();
+      try {
+        await FirebaseFirestore.instance
+            .collection('work_requests')
+            .doc(widget.workRequestId)
+            .update({
+              'requestedDate': selectedDate,
+              'fixDescription': descriptionController.text.trim(),
+              'status': 'pending',
+            });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Request updated successfully')),
+          );
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update request: $e')),
+          );
+        }
       }
     }
   }

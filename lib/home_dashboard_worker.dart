@@ -4,14 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dashboard_activities/service_browse.dart';
 import 'dashboard_activities/worker_profile_screen.dart';
 import 'dashboard_activities/worker_jobs_screen.dart';
-
-// Placeholder for Notifications
-class WorkerNotificationScreen extends StatelessWidget {
-  const WorkerNotificationScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text('Notifications'));
-}
+import 'package:myfixpal/dashboard_activities/worker_notification_screen.dart';
 
 class HomeDashboardWorker extends StatefulWidget {
   const HomeDashboardWorker({super.key});
@@ -25,7 +18,8 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
   late final List<Widget> _screens = [
     const ServiceBrowseScreen(),
     const WorkerNotificationScreen(),
-    const WorkerJobsScreen(), // This is your worker jobs feature-rich screen
+    const WorkerJobsScreen(),
+    const WorkerProfileScreen(), // ✅ added missing screen
   ];
 
   @override
@@ -34,12 +28,22 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
     if (userId == null) {
       return const Scaffold(body: Center(child: Text('No user logged in')));
     }
+
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('workers')
           .doc(userId)
           .snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Color(0xFF1B1E28),
+            body: Center(
+              child: CircularProgressIndicator(color: Color(0xFFFFD34E)),
+            ),
+          );
+        }
+
         final String workerName =
             (snapshot.hasData && snapshot.data?.data() != null)
             ? ((snapshot.data!.data() as Map<String, dynamic>)['fullName'] ??
@@ -47,7 +51,11 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
             : 'Worker';
 
         return Scaffold(
-          appBar: AppBar(title: Text("MyFixPal Worker - $workerName")),
+          /*   appBar: AppBar(
+            title: Text("MyFixPal Worker - $workerName"),
+            backgroundColor: const Color(0xFF222733),
+            foregroundColor: Colors.white,
+          ),*/
           body: _screens[_currentIndex],
           bottomNavigationBar: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
@@ -56,16 +64,7 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
             unselectedItemColor: Colors.white70,
             backgroundColor: const Color(0xFF222733),
             onTap: (index) {
-              if (index == 3) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const WorkerProfileScreen(),
-                  ),
-                );
-              } else {
-                setState(() => _currentIndex = index);
-              }
+              setState(() => _currentIndex = index);
             },
             items: const [
               BottomNavigationBarItem(

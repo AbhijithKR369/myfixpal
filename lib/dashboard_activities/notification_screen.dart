@@ -27,6 +27,7 @@ class NotificationScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Notifications'),
         backgroundColor: const Color(0xFF222733),
+        foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance

@@ -16,9 +16,18 @@ class WorkerJobsScreen extends StatelessWidget {
       return const Center(child: Text('Not logged in'));
     }
 
-    return Container(
-      color: backgroundColor,
-      child: StreamBuilder<QuerySnapshot>(
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        backgroundColor: backgroundColor,
+        elevation: 2,
+        title: const Text(
+          'Job Request',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('work_requests')
             .where('workerId', isEqualTo: workerId)
@@ -158,7 +167,6 @@ class WorkerJobsScreen extends StatelessWidget {
         .get();
 
     if (workerDoc.exists) return workerDoc.data() as Map<String, dynamic>;
-
     return null;
   }
 
@@ -171,218 +179,245 @@ class WorkerJobsScreen extends StatelessWidget {
     final status = job['status'] ?? 'pending';
 
     showModalBottomSheet(
+      isScrollControlled: true,
       backgroundColor: backgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: CircleAvatar(
-                backgroundImage:
-                    user['profilePhotoUrl'] != null &&
-                        user['profilePhotoUrl'].isNotEmpty
-                    ? NetworkImage(user['profilePhotoUrl'])
-                    : const AssetImage('assets/default_profile.png')
-                          as ImageProvider,
-                radius: 32,
-              ),
-              title: Text(
-                user['fullName'] ?? "User",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user['mobile'] ?? user['phone'] ?? "",
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  Text(
-                    user['address'] ??
-                        user['city'] ??
-                        user['pincode'] ??
-                        "not given",
-                    style: const TextStyle(color: Colors.white30),
-                  ),
-                ],
+      builder: (_) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.5,
+        child: Scaffold(
+          backgroundColor: backgroundColor,
+          appBar: AppBar(
+            backgroundColor: backgroundColor,
+            elevation: 0,
+            centerTitle: true,
+            title: const Text(
+              "Job Request",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
               ),
             ),
-            const Divider(color: Colors.white24, height: 24),
-            ListTile(
-              title: Text(
-                "Service:",
-                style: TextStyle(
-                  color: accentColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              subtitle: Text(
-                job['fixDescription'] ?? "",
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.date_range, color: Colors.white),
-              title: Text(
-                job['requestedDate'] != null
-                    ? DateFormat(
-                        'dd MMMM yyyy, hh:mm a',
-                      ).format((job['requestedDate'] as Timestamp).toDate())
-                    : "No date provided",
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // 🔹 Different buttons depending on job status
-            if (status == 'pending') ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check),
-                      label: const Text('Accept'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(44),
-                      ),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await ref.update({'status': 'accepted'});
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.clear),
-                      label: const Text('Reject'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(44),
-                      ),
-                      onPressed: () async {
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Confirm Reject'),
-                            content: const Text(
-                              'Are you sure you want to reject and permanently delete this request?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(false),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(true),
-                                child: const Text('Yes, Reject'),
-                              ),
-                            ],
-                          ),
-                        );
-
-                        if (confirmed == true) {
-                          try {
-                            await ref.delete();
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Job request rejected and deleted',
-                                  ),
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: Colors.redAccent,
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error deleting request: $e'),
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ] else if (status == 'accepted') ...[
-              ElevatedButton.icon(
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Mark as Completed'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                onPressed: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Mark as Completed'),
-                      content: const Text(
-                        'Are you sure you want to mark this job as completed?',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Confirm'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirmed == true) {
-                    await ref.update({'status': 'completed'});
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Job marked as completed!'),
-                          behavior: SnackBarBehavior.floating,
-                          backgroundColor: Colors.blueAccent,
-                        ),
-                      );
-                    }
-                  }
-                },
-              ),
-            ] else ...[
-              Center(
-                child: Text(
-                  "STATUS: ${status.toUpperCase()}",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: Colors.blueAccent,
-                  ),
-                ),
+            automaticallyImplyLeading: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
-          ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage:
+                        user['profilePhotoUrl'] != null &&
+                            user['profilePhotoUrl'].isNotEmpty
+                        ? NetworkImage(user['profilePhotoUrl'])
+                        : const AssetImage('assets/default_profile.png')
+                              as ImageProvider,
+                    radius: 32,
+                  ),
+                  title: Text(
+                    user['fullName'] ?? "User",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user['mobile'] ?? user['phone'] ?? "",
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      Text(
+                        user['address'] ??
+                            user['city'] ??
+                            user['pincode'] ??
+                            "not given",
+                        style: const TextStyle(color: Colors.white30),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(color: Colors.white24, height: 24),
+                ListTile(
+                  title: Text(
+                    "Service:",
+                    style: TextStyle(
+                      color: accentColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    job['fixDescription'] ?? "",
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.date_range, color: Colors.white),
+                  title: Text(
+                    job['requestedDate'] != null
+                        ? DateFormat(
+                            'dd MMMM yyyy, hh:mm a',
+                          ).format((job['requestedDate'] as Timestamp).toDate())
+                        : "No date provided",
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (status == 'pending') ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.check),
+                          label: const Text('Accept'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(44),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await ref.update({'status': 'accepted'});
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.clear),
+                          label: const Text('Reject'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(44),
+                          ),
+                          onPressed: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Confirm Reject'),
+                                content: const Text(
+                                  'Are you sure you want to reject and permanently delete this request?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(true),
+                                    child: const Text('Yes, Reject'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed == true) {
+                              try {
+                                await ref.delete();
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Job request rejected and deleted',
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Error deleting request: $e',
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (status == 'accepted') ...[
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Mark as Completed'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Mark as Completed'),
+                          content: const Text(
+                            'Are you sure you want to mark this job as completed?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Confirm'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        await ref.update({'status': 'completed'});
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Job marked as completed!'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: Colors.blueAccent,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ] else ...[
+                  Center(
+                    child: Text(
+                      "STATUS: ${status.toUpperCase()}",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: Colors.blueAccent,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
