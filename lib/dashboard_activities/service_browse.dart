@@ -6,16 +6,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 const Color kPrimaryColor = Color(0xFF00796B); // teal
 const Color kAccentColor = Color(0xFFFFD34E); // yellow
 const Color kBackgroundColor = Color(0xFF222733); // dark bg
+const Color kCardColor = Color.fromARGB(255, 188, 117, 3); // contrast card bg
 
 final ThemeData appTheme = ThemeData(
-  scaffoldBackgroundColor: const Color.fromRGBO(34, 39, 51, 1),
+  scaffoldBackgroundColor: kBackgroundColor,
   primaryColor: kPrimaryColor,
   colorScheme: ColorScheme.fromSeed(seedColor: kPrimaryColor),
   appBarTheme: const AppBarTheme(
-    backgroundColor: kPrimaryColor,
-    foregroundColor: Color.fromARGB(255, 34, 35, 39),
+    backgroundColor: kBackgroundColor,
+    foregroundColor: Color.fromARGB(255, 34, 39, 51),
     elevation: 2,
     centerTitle: true,
+    titleTextStyle: TextStyle(
+      color: Colors.white,
+      fontSize: 20,
+      fontWeight: FontWeight.bold,
+    ),
+    iconTheme: IconThemeData(color: Colors.white),
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
@@ -28,8 +35,8 @@ final ThemeData appTheme = ThemeData(
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: const Color.fromARGB(255, 34, 35, 39),
-    labelStyle: const TextStyle(color: Color.fromARGB(221, 255, 255, 255)),
+    fillColor: kCardColor,
+    labelStyle: const TextStyle(color: Colors.white),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(20),
       borderSide: const BorderSide(color: kAccentColor, width: 2),
@@ -60,8 +67,20 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: kBackgroundColor,
       appBar: AppBar(
-        title: const Text('Browse Services'),
+        title: const Text(
+          'Browse Services',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor:
+            kBackgroundColor, // <-- this sets the dark color explicitly
+        iconTheme: const IconThemeData(color: Colors.white), // keep icons white
+        // shape and other properties as needed
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
         ),
@@ -70,34 +89,71 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Select Profession',
-                prefixIcon: Icon(Icons.work),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(
+                  255,
+                  225,
+                  233,
+                  0,
+                ), // Your desired background
+                borderRadius: BorderRadius.circular(20),
               ),
-              initialValue: selectedProfession,
-              items: professions
-                  .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                  .toList(),
-              onChanged: (val) => setState(() => selectedProfession = val),
+              child: DropdownButtonFormField<String>(
+                dropdownColor: const Color.fromARGB(255, 225, 233, 0),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Select Profession',
+                  prefixIcon: Icon(Icons.work),
+                  border:
+                      InputBorder.none, // Optional: Remove border if desired
+                ),
+                items: professions
+                    .map(
+                      (p) => DropdownMenuItem(
+                        value: p,
+                        child: Text(
+                          p,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                value: selectedProfession,
+                onChanged: (val) => setState(() => selectedProfession = val),
+              ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: pincodeController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Enter Pincode',
-                prefixIcon: Icon(Icons.location_on),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(
+                  255,
+                  225,
+                  233,
+                  0,
+                ), // Your desired background color
+                borderRadius: BorderRadius.circular(20), // for rounded look
               ),
-              onChanged: (_) => setState(() {}),
+              child: TextField(
+                controller: pincodeController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Enter Pincode',
+                  prefixIcon: Icon(Icons.location_on),
+                  border: InputBorder.none, // remove extra border, optional
+                ),
+                style: const TextStyle(color: Colors.white),
+                onChanged: (_) => setState(() {}),
+              ),
             ),
+
             const SizedBox(height: 16),
             Expanded(
               child: selectedProfession == null
                   ? const Center(
                       child: Text(
                         'Please select a profession',
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(color: Colors.white),
                       ),
                     )
                   : StreamBuilder<QuerySnapshot>(
@@ -108,7 +164,9 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
                           return const Center(
-                            child: CircularProgressIndicator(),
+                            child: CircularProgressIndicator(
+                              color: kAccentColor,
+                            ),
                           );
                         }
 
@@ -148,7 +206,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                 .toInt();
 
                             return Card(
-                              color: Colors.white,
+                              color: kCardColor,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
@@ -165,8 +223,8 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                 title: Text(
                                   name,
                                   style: const TextStyle(
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
                                   ),
                                 ),
                                 subtitle: Column(
@@ -185,7 +243,10 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                           ratingCount > 0
                                               ? '${avgRating.toStringAsFixed(1)} ($ratingCount)'
                                               : 'No ratings yet',
-                                          style: const TextStyle(fontSize: 12),
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -200,7 +261,10 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                         const SizedBox(width: 4),
                                         Text(
                                           mobile,
-                                          style: const TextStyle(fontSize: 13),
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -208,7 +272,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                 ),
                                 trailing: const Icon(
                                   Icons.chevron_right,
-                                  color: kPrimaryColor,
+                                  color: kAccentColor,
                                 ),
                                 onTap: () {
                                   Navigator.of(context).push(
@@ -230,7 +294,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                       ),
                                     ),
                                   );
-                                  setState(() {}); // Refresh after rating
+                                  setState(() {});
                                 },
                               ),
                             );
@@ -247,12 +311,10 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
 }
 
 /// ------------------- SERVICE REQUEST SCREEN ------------------
-
 class ServiceRequestScreen extends StatefulWidget {
   final String workerId;
   final String workerName;
   final String workerMobile;
-
   final String? workRequestId;
   final String? prefilledDescription;
   final DateTime? prefilledDate;
@@ -283,47 +345,49 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
       descriptionController.text = widget.prefilledDescription!;
     }
     selectedDate = widget.prefilledDate;
-
-    descriptionController.addListener(() {
-      setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    descriptionController.dispose();
-    super.dispose();
+    descriptionController.addListener(() => setState(() {}));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Request Service - ${widget.workerName}')),
+      backgroundColor: kBackgroundColor,
+      appBar: AppBar(
+        title: Text(
+          'Request Service - ${widget.workerName}',
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: kBackgroundColor,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Card(
-              color: const Color.fromARGB(255, 34, 35, 39),
+              color: kCardColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ListTile(
-                leading: const Icon(Icons.phone, color: Colors.orange),
+                leading: const Icon(Icons.phone, color: kAccentColor),
                 title: Text(
                   widget.workerMobile,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              icon: const Icon(Icons.calendar_today),
+              icon: const Icon(Icons.calendar_today, color: kAccentColor),
               label: Text(
                 selectedDate == null
                     ? 'Select Date'
                     : '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}',
+                style: const TextStyle(color: Colors.white),
               ),
               onPressed: () async {
                 final now = DateTime.now();
@@ -332,19 +396,31 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                   initialDate: selectedDate ?? now,
                   firstDate: now,
                   lastDate: DateTime(now.year + 2),
+                  builder: (context, child) => Theme(
+                    data: appTheme.copyWith(
+                      colorScheme: appTheme.colorScheme.copyWith(
+                        primary: kAccentColor,
+                        onPrimary: Colors.white,
+                        background: kBackgroundColor,
+                        surface: kCardColor,
+                      ),
+                    ),
+                    child: child!,
+                  ),
                 );
                 if (picked != null) setState(() => selectedDate = picked);
               },
+              style: ElevatedButton.styleFrom(backgroundColor: kCardColor),
             ),
             const SizedBox(height: 24),
             TextField(
               controller: descriptionController,
               maxLines: 5,
+              style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 labelText: 'Describe the issue',
-                prefixIcon: Icon(Icons.description),
+                prefixIcon: Icon(Icons.description, color: kAccentColor),
               ),
-              // Removed setState here as controller listener handles it
             ),
             const Spacer(),
             ElevatedButton(
@@ -374,39 +450,23 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
       return;
     }
 
-    if (widget.workRequestId == null) {
-      final requestData = {
-        'userId': user.uid,
-        'createdBy': user.uid,
-        'workerId': widget.workerId,
-        'workerMobile': widget.workerMobile,
-        'workerName': widget.workerName,
-        'requestedDate': selectedDate,
-        'fixDescription': descriptionController.text.trim(),
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'pending',
-      };
-
-      try {
-        await FirebaseFirestore.instance
-            .collection('work_requests')
-            .add(requestData);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Request submitted successfully')),
-          );
-          Navigator.of(context).pop();
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to submit request: $e')),
-          );
-        }
-      }
-    } else {
-      try {
+    try {
+      if (widget.workRequestId == null) {
+        await FirebaseFirestore.instance.collection('work_requests').add({
+          'userId': user.uid,
+          'createdBy': user.uid,
+          'workerId': widget.workerId,
+          'workerMobile': widget.workerMobile,
+          'workerName': widget.workerName,
+          'requestedDate': selectedDate,
+          'fixDescription': descriptionController.text.trim(),
+          'timestamp': FieldValue.serverTimestamp(),
+          'status': 'pending',
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request submitted successfully')),
+        );
+      } else {
         await FirebaseFirestore.instance
             .collection('work_requests')
             .doc(widget.workRequestId)
@@ -415,20 +475,15 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
               'fixDescription': descriptionController.text.trim(),
               'status': 'pending',
             });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Request updated successfully')),
-          );
-          Navigator.of(context).pop();
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update request: $e')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request updated successfully')),
+        );
       }
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 }
@@ -437,7 +492,6 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
 class RateWorkerScreen extends StatefulWidget {
   final String workerId;
   final String workerName;
-
   const RateWorkerScreen({
     super.key,
     required this.workerId,
@@ -452,10 +506,8 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
   double rating = 0;
   final TextEditingController reviewController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
   bool isLoading = true;
   String? reviewDocId;
-
   Map<String, Map<String, String>> userCache = {};
 
   @override
@@ -470,29 +522,32 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
       setState(() => isLoading = false);
       return;
     }
-
-    final docId = "${widget.workerId}_${user.uid}";
     final doc = await FirebaseFirestore.instance
         .collection('worker_reviews')
-        .doc(docId)
+        .doc("${widget.workerId}_${user.uid}")
         .get();
-
     if (doc.exists) {
       final data = doc.data()!;
       rating = (data['rating'] ?? 0).toDouble();
       reviewController.text = data['review'] ?? '';
       reviewDocId = doc.id;
     }
-
     setState(() => isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Rate ${widget.workerName}')),
+      backgroundColor: kBackgroundColor,
+      appBar: AppBar(
+        title: Text(
+          'Rate ${widget.workerName}',
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: kBackgroundColor,
+      ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: kAccentColor))
           : Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -526,9 +581,10 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
                   TextField(
                     controller: reviewController,
                     maxLines: 5,
+                    style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
                       labelText: 'Write a review (optional)',
-                      prefixIcon: Icon(Icons.rate_review),
+                      prefixIcon: Icon(Icons.rate_review, color: kAccentColor),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -536,10 +592,14 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
                     onPressed: rating > 0 ? _submitReview : null,
                     child: const Text('Submit Review'),
                   ),
-                  const Divider(height: 32),
+                  const Divider(height: 32, color: Colors.white24),
                   const Text(
                     'All Reviews',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
@@ -554,19 +614,19 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
                           return Center(
                             child: Text(
                               'Error: ${snapshot.error}',
-                              style: const TextStyle(color: Colors.red),
+                              style: const TextStyle(color: Colors.redAccent),
+                            ),
+                          );
+                        }
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: kAccentColor,
                             ),
                           );
                         }
 
-                        if (!snapshot.hasData) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-
                         final docs = snapshot.data!.docs;
-
                         final userIds = docs
                             .map((doc) => doc['userId'] as String)
                             .toSet()
@@ -585,13 +645,8 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
                             if (userSnapshot.connectionState !=
                                 ConnectionState.done) {
                               return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            }
-                            if (userSnapshot.hasError) {
-                              return Center(
-                                child: Text(
-                                  'Error loading user info: ${userSnapshot.error}',
+                                child: CircularProgressIndicator(
+                                  color: kAccentColor,
                                 ),
                               );
                             }
@@ -618,19 +673,18 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
                               itemBuilder: (context, index) {
                                 final review =
                                     docs[index].data() as Map<String, dynamic>;
-
                                 final userId = review['userId'] as String;
                                 final userData = userCache[userId];
                                 final userName =
                                     userData?['fullName'] ?? 'Anonymous';
                                 final userPhotoUrl =
                                     userData?['profilePhoto'] ?? '';
-
                                 final userRating = (review['rating'] as num)
                                     .toDouble();
                                 final reviewText = review['review'] ?? '';
 
                                 return Card(
+                                  color: kCardColor,
                                   child: ListTile(
                                     leading: CircleAvatar(
                                       radius: 20,
@@ -648,6 +702,7 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
                                         Text(
                                           userName,
                                           style: const TextStyle(
+                                            color: Colors.white,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -659,13 +714,23 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
                                               size: 18,
                                             ),
                                             const SizedBox(width: 4),
-                                            Text(userRating.toStringAsFixed(1)),
+                                            Text(
+                                              userRating.toStringAsFixed(1),
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ],
                                     ),
                                     subtitle: reviewText != ''
-                                        ? Text(reviewText)
+                                        ? Text(
+                                            reviewText,
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                            ),
+                                          )
                                         : null,
                                   ),
                                 );
@@ -711,7 +776,6 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
 
     await batch.commit();
 
-    // Recalculate rating average and count
     final reviewsSnapshot = await FirebaseFirestore.instance
         .collection('worker_reviews')
         .where('workerId', isEqualTo: widget.workerId)
@@ -734,11 +798,7 @@ class _RateWorkerScreenState extends State<RateWorkerScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Review submitted')));
-      setState(() {
-        // Optionally clear form if needed
-        // rating = 0;
-        // reviewController.clear();
-      });
+      setState(() {});
     }
   }
 }
