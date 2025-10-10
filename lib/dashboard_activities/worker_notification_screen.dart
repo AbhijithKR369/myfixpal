@@ -7,14 +7,23 @@ import 'package:rxdart/rxdart.dart';
 class WorkerNotificationScreen extends StatelessWidget {
   const WorkerNotificationScreen({super.key});
 
-  Future<String> _getUserName(String userId) async {
+  Future<String> _getDisplayName(String userId) async {
     try {
-      final doc = await FirebaseFirestore.instance
+      final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
           .get();
-      if (doc.exists && doc.data()?['fullName'] != null) {
-        return doc['fullName'];
+      if (userDoc.exists && userDoc.data()?['fullName'] != null) {
+        return userDoc['fullName'];
+      }
+    } catch (_) {}
+    try {
+      final workerDoc = await FirebaseFirestore.instance
+          .collection('workers')
+          .doc(userId)
+          .get();
+      if (workerDoc.exists && workerDoc.data()?['fullName'] != null) {
+        return workerDoc['fullName'];
       }
     } catch (_) {}
     return 'Unknown User';
@@ -50,19 +59,16 @@ class WorkerNotificationScreen extends StatelessWidget {
 
     final currentId = currentUser.uid;
 
-    // 🔹 Jobs assigned to this worker
     final assignedStream = FirebaseFirestore.instance
         .collection('work_requests')
         .where('workerId', isEqualTo: currentId)
         .snapshots();
 
-    // 🔹 Jobs created by this worker (requests to other workers)
     final createdStream = FirebaseFirestore.instance
         .collection('work_requests')
         .where('createdBy', isEqualTo: currentId)
         .snapshots();
 
-    // 🔹 Reviews received by this worker
     final reviewsStream = FirebaseFirestore.instance
         .collection('worker_reviews')
         .where('workerId', isEqualTo: currentId)
@@ -109,14 +115,12 @@ class WorkerNotificationScreen extends StatelessWidget {
             data['type'] = 'assigned';
             allNotifications.add(data);
           }
-
           for (var doc in createdDocs) {
             final data = doc.data() as Map<String, dynamic>;
             data['docId'] = doc.id;
             data['type'] = 'created';
             allNotifications.add(data);
           }
-
           for (var doc in reviewDocs) {
             final data = doc.data() as Map<String, dynamic>;
             data['docId'] = doc.id;
@@ -149,7 +153,7 @@ class WorkerNotificationScreen extends StatelessWidget {
                   notif['timestamp'] as Timestamp? ?? Timestamp.now();
               final date = timestamp.toDate();
 
-              // ✅ REVIEWS
+              // REVIEWS
               if (type == 'review') {
                 final rating = (notif['rating'] ?? 0).toDouble();
                 final reviewText = notif['review'] ?? '';
@@ -172,11 +176,11 @@ class WorkerNotificationScreen extends StatelessWidget {
                 );
               }
 
-              // ✅ JOBS CREATED BY WORKER (requests sent to other workers)
+              // JOBS CREATED BY WORKER (worker-worker requests, show workerName)
               if (type == 'created') {
                 final status = notif['status'] ?? 'pending';
-                final workerName = notif['workerName'] ?? 'Worker';
                 final description = notif['fixDescription'] ?? '';
+                final workerNameStr = notif['workerName'] ?? 'Worker';
                 final workerId = notif['workerId'] ?? '';
                 final workerMobile = notif['workerMobile'] ?? '';
                 final requestedDate = notif['requestedDate'] as Timestamp?;
@@ -190,23 +194,23 @@ class WorkerNotificationScreen extends StatelessWidget {
                   case 'accepted':
                     icon = Icons.check_circle;
                     color = Colors.greenAccent;
-                    message = '$workerName accepted your job request';
+                    message = '$workerNameStr accepted your job request';
                     break;
                   case 'rejected':
                     icon = Icons.cancel;
                     color = Colors.redAccent;
-                    message = '$workerName rejected your job request';
+                    message = '$workerNameStr rejected your job request';
                     break;
                   case 'completed':
                   case 'complete':
                     icon = Icons.done_all;
                     color = Colors.blueAccent;
-                    message = '$workerName completed the work';
+                    message = '$workerNameStr completed the work';
                     break;
                   default:
                     icon = Icons.hourglass_empty;
                     color = Colors.amberAccent;
-                    message = 'Job request pending with $workerName';
+                    message = 'Job request pending with $workerNameStr';
                 }
 
                 return _notificationCard(
@@ -262,7 +266,7 @@ class WorkerNotificationScreen extends StatelessWidget {
                                   MaterialPageRoute(
                                     builder: (_) => ServiceRequestScreen(
                                       workerId: workerId,
-                                      workerName: workerName,
+                                      workerName: workerNameStr,
                                       workerMobile: workerMobile,
                                       prefilledDescription: description,
                                       prefilledDate: requestedDate?.toDate(),
@@ -288,13 +292,13 @@ class WorkerNotificationScreen extends StatelessWidget {
                 );
               }
 
-              // ✅ JOBS ASSIGNED TO WORKER
+              // JOBS ASSIGNED TO WORKER (fetch name from users or workers)
               final status = notif['status'] ?? 'pending';
               final description = notif['fixDescription'] ?? '';
               final userId = notif['userId'] ?? '';
 
               return FutureBuilder<String>(
-                future: _getUserName(userId),
+                future: _getDisplayName(userId),
                 builder: (context, snapshot) {
                   final userName = snapshot.data ?? 'User';
                   IconData icon;

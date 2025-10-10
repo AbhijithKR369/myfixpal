@@ -44,12 +44,12 @@ class _HomeDashboardWorkerState extends State<HomeDashboardWorker> {
           );
         }
 
-        final String workerName =
+        /*  final String workerName =
             (snapshot.hasData && snapshot.data?.data() != null)
             ? ((snapshot.data!.data() as Map<String, dynamic>)['fullName'] ??
                   'Worker')
             : 'Worker';
-
+*/
         return Scaffold(
           /*   appBar: AppBar(
             title: Text("MyFixPal Worker - $workerName"),

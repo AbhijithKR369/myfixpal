@@ -92,15 +92,15 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
             Container(
               decoration: BoxDecoration(
                 color: const Color.fromARGB(
-                  255,
                   225,
-                  233,
-                  0,
+                  161,
+                  198,
+                  234,
                 ), // Your desired background
                 borderRadius: BorderRadius.circular(20),
               ),
               child: DropdownButtonFormField<String>(
-                dropdownColor: const Color.fromARGB(255, 225, 233, 0),
+                dropdownColor: const Color.fromARGB(255, 161, 198, 234),
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'Select Profession',
@@ -127,10 +127,10 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
             Container(
               decoration: BoxDecoration(
                 color: const Color.fromARGB(
-                  255,
                   225,
-                  233,
-                  0,
+                  161,
+                  198,
+                  234,
                 ), // Your desired background color
                 borderRadius: BorderRadius.circular(20), // for rounded look
               ),
