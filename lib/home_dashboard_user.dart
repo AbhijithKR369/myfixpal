@@ -3,14 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myfixpal/dashboard_activities/service_browse.dart';
 import 'package:myfixpal/dashboard_activities/notification_screen.dart';
 import 'package:myfixpal/dashboard_activities/user_profile_screen.dart';
-
-class TopRatedWorkersScreen extends StatelessWidget {
-  const TopRatedWorkersScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text('Top Rated Workers'));
-}
+import 'package:myfixpal/dashboard_activities/user_history.dart'; // ✅ New import
 
 class HomeDashboardUser extends StatefulWidget {
   const HomeDashboardUser({super.key});
@@ -22,12 +15,12 @@ class HomeDashboardUser extends StatefulWidget {
 class _HomeDashboardUserState extends State<HomeDashboardUser> {
   int _currentIndex = 0;
 
-  // Screens for the bottom navigation bar
+  // ✅ Screens for the bottom navigation bar
   final List<Widget> _screens = const [
-    ServiceBrowseScreen(), // ✅ Service browsing screen
-    NotificationScreen(), // ✅ Imported from dashboard_activities/notification_screen.dart
-    TopRatedWorkersScreen(), // ✅ Placeholder for now
-    UserProfileScreen(), // ✅ Profile screen
+    ServiceBrowseScreen(),
+    NotificationScreen(),
+    UserHistoryScreen(), // ✅ Replaced TopRatedWorkersScreen
+    UserProfileScreen(),
   ];
 
   @override
@@ -55,7 +48,10 @@ class _HomeDashboardUserState extends State<HomeDashboardUser> {
             icon: Icon(Icons.notifications),
             label: 'Notifications',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Top Rated'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history), // ✅ Changed icon
+            label: 'History', // ✅ Changed label
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: 'Profile',

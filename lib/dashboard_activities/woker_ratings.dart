@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 const Color kPrimaryColor = Color(0xFF00796B);
 const Color kAccentColor = Color(0xFFFFD34E);
 const Color kBackgroundColor = Color(0xFF222733);
+const Color kCardColor = Color.fromARGB(255, 188, 117, 3);
 
 class RateWorkerScreen extends StatefulWidget {
   final String workerId;
@@ -21,178 +22,302 @@ class RateWorkerScreen extends StatefulWidget {
 }
 
 class _RateWorkerScreenState extends State<RateWorkerScreen> {
-  double _rating = 0;
-  final TextEditingController _reviewController = TextEditingController();
+  double rating = 0;
+  final TextEditingController reviewController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  bool _isSubmitting = false;
+  bool isLoading = true;
+  String? reviewDocId;
+  Map<String, Map<String, String>> userCache = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingReview();
+  }
+
+  Future<void> _loadExistingReview() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      setState(() => isLoading = false);
+      return;
+    }
+    final doc = await FirebaseFirestore.instance
+        .collection('worker_reviews')
+        .doc("${widget.workerId}_${user.uid}")
+        .get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      rating = (data['rating'] ?? 0).toDouble();
+      reviewController.text = data['review'] ?? '';
+      reviewDocId = doc.id;
+    }
+    setState(() => isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackgroundColor,
       appBar: AppBar(
-        backgroundColor: kPrimaryColor,
-        title: Text('Rate ${widget.workerName}'),
-        centerTitle: true,
+        title: Text(
+          'Rate ${widget.workerName}',
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: kBackgroundColor,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            Center(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator(color: kAccentColor))
+          : Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(
-                    Icons.star_rate_rounded,
-                    color: kAccentColor,
-                    size: 60,
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   Text(
-                    'How was your experience?',
+                    'Give a rating to ${widget.workerName}',
                     style: const TextStyle(
                       fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      5,
+                      (i) => IconButton(
+                        icon: Icon(
+                          i < rating ? Icons.star : Icons.star_border,
+                          color: kAccentColor,
+                          size: 36,
+                        ),
+                        onPressed: () => setState(() => rating = i + 1.0),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: reviewController,
+                    maxLines: 5,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Write a review (optional)',
+                      prefixIcon: Icon(Icons.rate_review, color: kAccentColor),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: rating > 0 ? _submitReview : null,
+                    child: const Text('Submit Review'),
+                  ),
+                  const Divider(height: 32, color: Colors.white24),
+                  const Text(
+                    'All Reviews',
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('worker_reviews')
+                          .where('workerId', isEqualTo: widget.workerId)
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Error: ${snapshot.error}',
+                              style: const TextStyle(color: Colors.redAccent),
+                            ),
+                          );
+                        }
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: kAccentColor,
+                            ),
+                          );
+                        }
+
+                        final docs = snapshot.data!.docs;
+                        final userIds = docs
+                            .map((doc) => doc['userId'] as String)
+                            .toSet()
+                            .toList();
+
+                        return FutureBuilder<List<DocumentSnapshot>>(
+                          future: Future.wait(
+                            userIds.map(
+                              (id) => FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(id)
+                                  .get(),
+                            ),
+                          ),
+                          builder: (context, userSnapshot) {
+                            if (userSnapshot.connectionState !=
+                                ConnectionState.done) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: kAccentColor,
+                                ),
+                              );
+                            }
+
+                            userCache.clear();
+                            for (var userDoc in userSnapshot.data ?? []) {
+                              if (userDoc.exists) {
+                                final data =
+                                    userDoc.data() as Map<String, dynamic>;
+                                userCache[userDoc.id] = {
+                                  'fullName':
+                                      data['fullName']?.toString() ??
+                                      'Anonymous',
+                                  'profilePhoto':
+                                      data['profilePhotoUrl']?.toString() ?? '',
+                                };
+                              }
+                            }
+
+                            return ListView.separated(
+                              itemCount: docs.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                final review =
+                                    docs[index].data() as Map<String, dynamic>;
+                                final userId = review['userId'] as String;
+                                final userData = userCache[userId];
+                                final userName =
+                                    userData?['fullName'] ?? 'Anonymous';
+                                final userPhotoUrl =
+                                    userData?['profilePhoto'] ?? '';
+                                final userRating = (review['rating'] as num)
+                                    .toDouble();
+                                final reviewText = review['review'] ?? '';
+
+                                return Card(
+                                  color: kCardColor,
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      radius: 20,
+                                      backgroundImage: userPhotoUrl.isNotEmpty
+                                          ? NetworkImage(userPhotoUrl)
+                                          : const AssetImage(
+                                                  'assets/default_profile.png',
+                                                )
+                                                as ImageProvider,
+                                    ),
+                                    title: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          userName,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.star,
+                                              color: Colors.amber,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              userRating.toStringAsFixed(1),
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    subtitle: reviewText != ''
+                                        ? Text(
+                                            reviewText,
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Star Rating
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) {
-                final filled = index < _rating;
-                return IconButton(
-                  icon: Icon(
-                    filled ? Icons.star_rounded : Icons.star_border_rounded,
-                    color: kAccentColor,
-                    size: 40,
-                  ),
-                  onPressed: () {
-                    setState(() => _rating = index + 1.0);
-                  },
-                );
-              }),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Review Box
-            TextField(
-              controller: _reviewController,
-              maxLines: 5,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Write a review (optional)',
-                labelStyle: const TextStyle(color: Colors.white70),
-                hintText: 'Describe your experience...',
-                hintStyle: const TextStyle(color: Colors.white38),
-                prefixIcon: const Icon(Icons.edit_note, color: kAccentColor),
-                filled: true,
-                fillColor: const Color(0xFF2E3340),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Colors.white30),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: kAccentColor, width: 2),
-                ),
-              ),
-            ),
-
-            const Spacer(),
-
-            // Submit Button
-            ElevatedButton.icon(
-              onPressed: _isSubmitting || _rating == 0 ? null : _submitReview,
-              icon: const Icon(Icons.send_rounded),
-              label: _isSubmitting
-                  ? const Text('Submitting...')
-                  : const Text('Submit Rating'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kAccentColor,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                textStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  /// ------------------- SUBMIT REVIEW -------------------
   Future<void> _submitReview() async {
-    setState(() => _isSubmitting = true);
     final user = _auth.currentUser;
-
     if (user == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Please log in first')));
-      setState(() => _isSubmitting = false);
+      ).showSnackBar(const SnackBar(content: Text('Login required')));
       return;
     }
 
-    try {
-      final firestore = FirebaseFirestore.instance;
+    final docId = "${widget.workerId}_${user.uid}";
+    final reviewRef = FirebaseFirestore.instance
+        .collection('worker_reviews')
+        .doc(docId);
+    final workerRef = FirebaseFirestore.instance
+        .collection('workers')
+        .doc(widget.workerId);
 
-      // Save new review
-      await firestore.collection('worker_reviews').add({
-        'workerId': widget.workerId,
-        'userId': user.uid,
-        'reviewText': _reviewController.text.trim(),
-        'rating': _rating,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+    final batch = FirebaseFirestore.instance.batch();
 
-      // Update worker average rating
-      final reviews = await firestore
-          .collection('worker_reviews')
-          .where('workerId', isEqualTo: widget.workerId)
-          .get();
+    batch.set(reviewRef, {
+      'workerId': widget.workerId,
+      'userId': user.uid,
+      'rating': rating,
+      'review': reviewController.text.trim(),
+      'timestamp': FieldValue.serverTimestamp(),
+    });
 
-      if (reviews.docs.isNotEmpty) {
-        double total = 0;
-        for (var doc in reviews.docs) {
-          total += (doc['rating'] ?? 0).toDouble();
-        }
-        final avg = total / reviews.docs.length;
+    await batch.commit();
 
-        await firestore.collection('workers').doc(widget.workerId).update({
-          'rating': avg,
-          'ratingCount': reviews.docs.length,
-        });
-      }
+    final reviewsSnapshot = await FirebaseFirestore.instance
+        .collection('worker_reviews')
+        .where('workerId', isEqualTo: widget.workerId)
+        .get();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Thank you for your feedback!'),
-          backgroundColor: kPrimaryColor,
-        ),
-      );
+    final ratings = reviewsSnapshot.docs
+        .map((d) => (d.data()['rating'] as num).toDouble())
+        .toList();
+    final totalRatings = ratings.length;
+    final avgRating = totalRatings > 0
+        ? ratings.reduce((a, b) => a + b) / totalRatings
+        : 0;
 
-      Navigator.pop(context);
-    } catch (e) {
+    await workerRef.set({
+      'rating': avgRating,
+      'ratingCount': totalRatings,
+    }, SetOptions(merge: true));
+
+    if (mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error submitting review: $e')));
-    } finally {
-      setState(() => _isSubmitting = false);
+      ).showSnackBar(const SnackBar(content: Text('Review submitted')));
+      setState(() {});
     }
   }
 }
