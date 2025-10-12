@@ -55,8 +55,9 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
 
           final expiredPendingJobs = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            if (data['status'] != 'accepted' || data['requestedDate'] == null)
+            if (data['status'] != 'accepted' || data['requestedDate'] == null) {
               return false;
+            }
             try {
               final jobDate = (data['requestedDate'] as Timestamp).toDate();
               return jobDate.isBefore(DateTime(now.year, now.month, now.day));

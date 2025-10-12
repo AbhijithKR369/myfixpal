@@ -136,8 +136,9 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                   return FutureBuilder<Map<String, dynamic>?>(
                     future: _getUserOrWorker(userId),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData || snapshot.data == null)
+                      if (!snapshot.hasData || snapshot.data == null) {
                         return const SizedBox(height: 0);
+                      }
                       final user = snapshot.data!;
                       return Card(
                         color: kCardColor,
@@ -178,7 +179,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                       );
                     },
                   );
-                }).toList(),
+                }),
               ],
             );
           },
@@ -262,8 +263,9 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                   return FutureBuilder<Map<String, dynamic>?>(
                     future: _getUserOrWorker(userId),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData || snapshot.data == null)
+                      if (!snapshot.hasData || snapshot.data == null) {
                         return const SizedBox(height: 0);
+                      }
                       final user = snapshot.data!;
                       return Card(
                         color: kCardColor,
@@ -304,7 +306,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                       );
                     },
                   );
-                }).toList(),
+                }),
               ],
             );
           },

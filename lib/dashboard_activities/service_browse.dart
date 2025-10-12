@@ -111,7 +111,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                       ),
                     )
                     .toList(),
-                value: selectedProfession,
+                initialValue: selectedProfession,
                 onChanged: (val) => setState(() => selectedProfession = val),
               ),
             ),
@@ -391,7 +391,6 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                       colorScheme: appTheme.colorScheme.copyWith(
                         primary: kAccentColor,
                         onPrimary: Colors.white,
-                        background: kBackgroundColor,
                         surface: kCardColor,
                       ),
                     ),
