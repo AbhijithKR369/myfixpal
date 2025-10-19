@@ -89,12 +89,16 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
           children: [
             Container(
               decoration: BoxDecoration(
-                color: const Color.fromARGB(225, 161, 198, 234),
+                color: const Color.fromARGB(255, 161, 198, 234),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: DropdownButtonFormField<String>(
+                // set dropdown background to white so item text (black) is visible
                 dropdownColor: const Color.fromARGB(255, 161, 198, 234),
-                style: const TextStyle(color: Colors.white),
+                // this style affects the selected value shown in the field
+                style: const TextStyle(
+                  color: Color.fromARGB(255, 161, 198, 234),
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Select Profession',
                   prefixIcon: Icon(Icons.work),
@@ -104,9 +108,10 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                     .map(
                       (p) => DropdownMenuItem(
                         value: p,
+                        // make the menu items' text black
                         child: Text(
                           p,
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(color: Colors.black),
                         ),
                       ),
                     )
@@ -389,9 +394,9 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                   builder: (context, child) => Theme(
                     data: appTheme.copyWith(
                       colorScheme: appTheme.colorScheme.copyWith(
-                        primary: kAccentColor,
+                        primary: const Color.fromARGB(255, 243, 30, 11),
                         onPrimary: Colors.white,
-                        surface: kCardColor,
+                        surface: const Color.fromARGB(255, 12, 3, 188),
                       ),
                     ),
                     child: child!,
@@ -413,6 +418,24 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
             ),
             const Spacer(),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromARGB(
+                  255,
+                  0,
+                  150,
+                  163,
+                ), // change to the color you want
+                foregroundColor: const Color.fromARGB(
+                  255,
+                  171,
+                  184,
+                  2,
+                ), // text/icon color
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
               onPressed:
                   (selectedDate != null &&
                       descriptionController.text.trim().isNotEmpty)
@@ -422,6 +445,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                 widget.workRequestId == null
                     ? 'Send Request'
                     : 'Update Request',
+                style: const TextStyle(fontSize: 16),
               ),
             ),
             const SizedBox(height: 18),
