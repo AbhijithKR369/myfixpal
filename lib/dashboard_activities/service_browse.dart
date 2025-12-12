@@ -1,3 +1,4 @@
+// lib/screens/service_browse.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -64,6 +65,34 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
   String? selectedProfession;
   final TextEditingController pincodeController = TextEditingController();
 
+  // Safe parsing helpers
+  double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    try {
+      return double.parse(v.toString());
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
+  int _toInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    try {
+      return int.parse(v.toString());
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    pincodeController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,9 +122,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: DropdownButtonFormField<String>(
-                // set dropdown background to white so item text (black) is visible
                 dropdownColor: const Color.fromARGB(255, 161, 198, 234),
-                // this style affects the selected value shown in the field
                 style: const TextStyle(
                   color: Color.fromARGB(255, 161, 198, 234),
                 ),
@@ -108,7 +135,6 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                     .map(
                       (p) => DropdownMenuItem(
                         value: p,
-                        // make the menu items' text black
                         child: Text(
                           p,
                           style: const TextStyle(color: Colors.black),
@@ -148,9 +174,11 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                       ),
                     )
                   : StreamBuilder<QuerySnapshot>(
+                      // IMPORTANT: only show approved workers
                       stream: FirebaseFirestore.instance
                           .collection('workers')
                           .where('profession', isEqualTo: selectedProfession)
+                          .where('isApproved', isEqualTo: true)
                           .snapshots(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
@@ -166,10 +194,10 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                         sortedDocs.sort((a, b) {
                           final aData = a.data()! as Map<String, dynamic>;
                           final bData = b.data()! as Map<String, dynamic>;
-                          final aRating = (aData['rating'] ?? 0).toDouble();
-                          final bRating = (bData['rating'] ?? 0).toDouble();
-                          final aCount = (aData['ratingCount'] ?? 0).toInt();
-                          final bCount = (bData['ratingCount'] ?? 0).toInt();
+                          final aRating = _toDouble(aData['rating']);
+                          final bRating = _toDouble(bData['rating']);
+                          final aCount = _toInt(aData['ratingCount']);
+                          final bCount = _toInt(bData['ratingCount']);
                           if (bRating.compareTo(aRating) != 0) {
                             return bRating.compareTo(aRating);
                           } else {
@@ -207,9 +235,8 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                             final photoUrl = data['profilePhotoUrl'] ?? '';
                             final name = data['fullName'] ?? 'No Name';
                             final mobile = data['mobile'] ?? 'No Number';
-                            final avgRating = (data['rating'] ?? 0).toDouble();
-                            final ratingCount = (data['ratingCount'] ?? 0)
-                                .toInt();
+                            final avgRating = _toDouble(data['rating']);
+                            final ratingCount = _toInt(data['ratingCount']);
 
                             return Card(
                               color: kCardColor,
@@ -341,6 +368,12 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
     }
     selectedDate = widget.prefilledDate;
     descriptionController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    descriptionController.dispose();
+    super.dispose();
   }
 
   @override
@@ -526,7 +559,6 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                       if (userSnap.hasData &&
                           userDoc != null &&
                           userDoc.exists) {
-                        // Always use .data()?['field'] for optional fields
                         final data =
                             userDoc.data() as Map<String, dynamic>? ?? {};
                         name = data['fullName'] ?? 'User';

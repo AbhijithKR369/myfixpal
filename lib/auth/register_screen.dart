@@ -115,6 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen>
           });
         } else {
           // Worker: write into 'workers' collection only
+          // NOTE: isApproved is set to false on registration
           await _firestore.collection('workers').doc(user.uid).set({
             'uid': user.uid,
             'email': emailController.text.trim(),
@@ -126,6 +127,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             'pincode': pincodeController.text.trim(),
             'profession': selectedProfession,
             'aadhaar': aadhaarController.text.trim(),
+            'isApproved': false, // <-- newly added
           });
         }
 

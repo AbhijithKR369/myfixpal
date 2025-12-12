@@ -255,6 +255,18 @@ class WorkerProfileScreen extends StatelessWidget {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 0),
                 onTap: () => _changePassword(context),
               ),
+
+              // <-- ADDED: View Past Activity / Jobs for workers
+              ListTile(
+                leading: const Icon(Icons.history, color: accentColor),
+                title: const Text(
+                  'View Past Activity / Jobs',
+                  style: TextStyle(color: Colors.white),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+                onTap: () => Navigator.pushNamed(context, '/worker_history'),
+              ),
+
               ListTile(
                 leading: const Icon(Icons.support_agent, color: accentColor),
                 title: const Text(

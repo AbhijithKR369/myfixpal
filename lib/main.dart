@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'firebase_options.dart'; // Generated Firebase options
+
 import 'home_dashboard_worker.dart';
 import 'home_dashboard_user.dart';
 import 'auth/register_screen.dart';
-import 'auth/login_screen.dart'; // Login screen
+import 'auth/login_screen.dart';
 import 'update_profile_screen.dart';
 import 'update_profile_worker.dart';
 import 'startup_screen.dart';
-import 'splash_screen.dart'; // Splash screen
-import 'dashboard_activities/service_browse.dart'; // ✅ Import ServiceBrowseScreen
+import 'splash_screen.dart';
+import 'dashboard_activities/service_browse.dart';
+
+// Add these imports (update paths if your files are in different folders)
+import 'customer_history.dart';
+import 'worker_history.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +37,6 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'MyFixPal',
       theme: ThemeData(primarySwatch: Colors.blue),
-      // Set splash screen as the initial route to show animated splash on app start
       initialRoute: '/splash',
       routes: {
         '/splash': (context) => const SplashScreen(),
@@ -45,6 +49,10 @@ class MyApp extends StatelessWidget {
         '/update_profile': (context) => const UpdateProfileScreen(),
         '/update_profile_worker': (context) =>
             const UpdateProfileWorkerScreen(),
+
+        // Profile & history routes
+        '/customer_history': (context) => const CustomerHistoryScreen(),
+        '/worker_history': (context) => const WorkerHistoryScreen(),
       },
     );
   }

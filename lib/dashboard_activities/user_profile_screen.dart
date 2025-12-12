@@ -262,7 +262,7 @@ class UserProfileScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.white),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 0),
-                onTap: () => Navigator.pushNamed(context, '/user_requests'),
+                onTap: () => Navigator.pushNamed(context, '/customer_history'),
               ),
               ListTile(
                 leading: const Icon(Icons.support_agent, color: accentColor),
