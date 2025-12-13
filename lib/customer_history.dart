@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 const Color kBackgroundColor = Color(0xFF222733);
 const Color kCardColor = Color.fromARGB(255, 188, 117, 3);
@@ -14,43 +15,26 @@ class CustomerHistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return Scaffold(
-        backgroundColor: kBackgroundColor,
-        appBar: AppBar(
-          title: const Text('Your History'),
-          backgroundColor: kBackgroundColor,
-        ),
-        body: const Center(
-          child: Text('Please login', style: TextStyle(color: Colors.white)),
-        ),
+      return const Scaffold(
+        body: Center(child: Text('Please login')),
       );
     }
-
-    final userId = user.uid;
 
     return Scaffold(
       backgroundColor: kBackgroundColor,
       appBar: AppBar(
-        title: const Text('Completed Jobs (Customer)'),
+        title: const Text('Completed Jobs'),
         backgroundColor: kBackgroundColor,
+        foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('work_requests')
+            .where('userId', isEqualTo: user.uid)
             .where('status', isEqualTo: 'completed')
-            .where('userId', isEqualTo: userId)
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snap) {
-          if (snap.hasError) {
-            return Center(
-              child: Text(
-                'Error: ${snap.error}',
-                style: const TextStyle(color: Colors.redAccent),
-              ),
-            );
-          }
-
           if (!snap.hasData) {
             return const Center(
               child: CircularProgressIndicator(color: kAccentColor),
@@ -61,31 +45,18 @@ class CustomerHistoryScreen extends StatelessWidget {
           if (docs.isEmpty) {
             return const Center(
               child: Text(
-                'No completed requests yet',
+                'No completed jobs yet',
                 style: TextStyle(color: Colors.white70),
               ),
             );
           }
 
-          return ListView.separated(
+          return ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, i) {
-              final req = docs[i].data()! as Map<String, dynamic>;
-              final workerId = (req['workerId'] ?? '').toString().trim();
-
-              // Skip rows without a valid workerId
-              if (workerId.isEmpty) {
-                return const SizedBox.shrink();
-              }
-
-              final fixDescription = (req['fixDescription'] ?? '').toString();
-              final requestedDate = req['requestedDate'];
-              final timestamp = req['timestamp'] as Timestamp?;
-              final tsText = timestamp != null
-                  ? timestamp.toDate().toLocal().toString()
-                  : '';
+              final req = docs[i].data() as Map<String, dynamic>;
+              final workerId = req['workerId'] ?? '';
 
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance
@@ -93,134 +64,51 @@ class CustomerHistoryScreen extends StatelessWidget {
                     .doc(workerId)
                     .get(),
                 builder: (context, workerSnap) {
-                  // Default/fallback values
                   String name = 'Worker';
-                  String address = req['location']?.toString() ?? '';
-                  String phone = req['workerMobile']?.toString() ?? '';
+                  String profession = 'Service';
                   String? photoUrl;
 
-                  if (workerSnap.connectionState == ConnectionState.waiting) {
-                    // Lightweight placeholder while worker profile loads
-                    return Card(
-                      color: kCardColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            const CircleAvatar(
-                              radius: 30,
-                              backgroundColor: Colors.white12,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'Loading...',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
                   if (workerSnap.hasData && workerSnap.data!.exists) {
-                    final data =
+                    final w =
                         workerSnap.data!.data() as Map<String, dynamic>? ?? {};
-                    name = (data['fullName'] ?? name).toString();
-                    address = (data['location'] ?? data['address'] ?? address)
-                        .toString();
-                    phone = (data['mobile'] ?? phone).toString();
-                    photoUrl = data['profilePhotoUrl']?.toString();
+                    name = w['fullName'] ?? name;
+                    profession = w['profession'] ?? profession;
+                    photoUrl = w['profilePhotoUrl'];
                   }
-
-                  final ImageProvider imageProvider =
-                      (photoUrl != null && photoUrl.trim().isNotEmpty)
-                      ? NetworkImage(photoUrl)
-                      : const AssetImage('assets/default_profile.png');
 
                   return Card(
                     color: kCardColor,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundImage: imageProvider,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                if (address.isNotEmpty)
-                                  Text(
-                                    address,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Phone: ${phone}',
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Job: $fixDescription',
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                                const SizedBox(height: 6),
-                                if (requestedDate != null)
-                                  Text(
-                                    'Requested: ${_formatDateLike(requestedDate)}',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                if (tsText.isNotEmpty)
-                                  Text(
-                                    'Completed: $tsText',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.phone, color: Colors.green),
-                            onPressed: () {
-                              // optionally launch dialer with url_launcher
-                            },
-                          ),
-                        ],
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        radius: 26,
+                        backgroundImage:
+                            (photoUrl != null && photoUrl.isNotEmpty)
+                                ? NetworkImage(photoUrl)
+                                : const AssetImage(
+                                        'assets/default_profile.png')
+                                    as ImageProvider,
                       ),
+                      title: Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        profession,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right,
+                        color: kAccentColor,
+                      ),
+                      onTap: () => _showDetails(context, req, name, profession,
+                          photoUrl),
                     ),
                   );
                 },
@@ -231,14 +119,101 @@ class CustomerHistoryScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-String _formatDateLike(dynamic value) {
-  try {
-    if (value is Timestamp) return value.toDate().toLocal().toString();
-    if (value is DateTime) return value.toLocal().toString();
-    return value?.toString() ?? '';
-  } catch (_) {
-    return value?.toString() ?? '';
+  /// -------- DETAILS BOTTOM SHEET --------
+  void _showDetails(
+    BuildContext context,
+    Map<String, dynamic> req,
+    String name,
+    String profession,
+    String? photoUrl,
+  ) {
+    final DateTime? requestedDate =
+        (req['requestedDate'] is Timestamp)
+            ? (req['requestedDate'] as Timestamp).toDate()
+            : null;
+
+    final DateTime? completedDate =
+        (req['timestamp'] is Timestamp)
+            ? (req['timestamp'] as Timestamp).toDate()
+            : null;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: kBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundImage:
+                        (photoUrl != null && photoUrl.isNotEmpty)
+                            ? NetworkImage(photoUrl)
+                            : const AssetImage(
+                                    'assets/default_profile.png')
+                                as ImageProvider,
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        profession,
+                        style: const TextStyle(color: kAccentColor),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const Divider(color: Colors.white24, height: 24),
+              _detailRow('Problem', req['fixDescription']),
+              _detailRow(
+                'Requested',
+                requestedDate != null
+                    ? DateFormat('dd MMM yyyy').format(requestedDate)
+                    : 'N/A',
+              ),
+              _detailRow(
+                'Completed',
+                completedDate != null
+                    ? DateFormat('dd MMM yyyy').format(completedDate)
+                    : 'N/A',
+              ),
+              _detailRow('Phone', req['workerMobile']),
+              _detailRow('Address', req['location']),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailRow(String label, dynamic value) {
+    if (value == null || value.toString().isEmpty) return const SizedBox();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(color: Colors.white70),
+      ),
+    );
   }
 }

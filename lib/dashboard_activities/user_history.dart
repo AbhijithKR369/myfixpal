@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:myfixpal/dashboard_activities/woker_ratings.dart'; // double check this import path
+import 'package:myfixpal/dashboard_activities/woker_ratings.dart';
+import 'package:myfixpal/report_issue_screen.dart';
 
-const Color kPrimaryColor = Color(0xFF00796B);
 const Color kAccentColor = Color(0xFFFFD34E);
-const Color kBackgroundColor = Color(0xFF222733);
 
 class UserHistoryScreen extends StatefulWidget {
   const UserHistoryScreen({super.key});
@@ -16,13 +15,26 @@ class UserHistoryScreen extends StatefulWidget {
 }
 
 class _UserHistoryScreenState extends State<UserHistoryScreen> {
-  final userId = FirebaseAuth.instance.currentUser?.uid;
-  final DateFormat displayFormat = DateFormat('dd/MM/yyyy, EEEE');
+  final String? userId = FirebaseAuth.instance.currentUser?.uid;
+  final DateFormat displayFormat = DateFormat('dd/MM/yyyy');
+
+  DateTime getSortDate(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    if (data['requestedDate'] is Timestamp) {
+      return (data['requestedDate'] as Timestamp).toDate();
+    }
+    if (data['timestamp'] is Timestamp) {
+      return (data['timestamp'] as Timestamp).toDate();
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
 
   @override
   Widget build(BuildContext context) {
     if (userId == null) {
-      return const Scaffold(body: Center(child: Text('User not logged in')));
+      return const Scaffold(
+        body: Center(child: Text('User not logged in')),
+      );
     }
 
     return Scaffold(
@@ -31,7 +43,6 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
         title: const Text('My Job History'),
         backgroundColor: const Color(0xFF222733),
         foregroundColor: Colors.white,
-        elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -41,146 +52,133 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFFFD34E)),
+              child: CircularProgressIndicator(color: kAccentColor),
             );
           }
 
           final docs = snapshot.data!.docs;
           final now = DateTime.now();
 
-          final completedJobs = docs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            return data['status'] == 'completed';
-          }).toList();
+          final completedJobs = docs
+              .where((d) => (d['status'] ?? '') == 'completed')
+              .toList()
+            ..sort((a, b) => getSortDate(b).compareTo(getSortDate(a)));
 
-          final expiredPendingJobs = docs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            if (data['status'] != 'accepted' || data['requestedDate'] == null) {
-              return false;
-            }
-            try {
-              final jobDate = (data['requestedDate'] as Timestamp).toDate();
-              return jobDate.isBefore(DateTime(now.year, now.month, now.day));
-            } catch (_) {
-              return false;
-            }
-          }).toList();
+          final overdueJobs = docs
+              .where((d) {
+                if (d['status'] != 'accepted' || d['requestedDate'] == null) {
+                  return false;
+                }
+                final date = (d['requestedDate'] as Timestamp).toDate();
+                return date.isBefore(DateTime(now.year, now.month, now.day));
+              })
+              .toList()
+            ..sort((a, b) => getSortDate(b).compareTo(getSortDate(a)));
 
-          return SingleChildScrollView(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Completed Jobs',
-                  style: TextStyle(
-                    color: Color(0xFFFFD34E),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                completedJobs.isEmpty
-                    ? _noDataCard('No completed jobs found')
-                    : _buildJobList(completedJobs, Colors.greenAccent),
+            children: [
+              _sectionTitle('Completed Jobs', Colors.greenAccent),
+              completedJobs.isEmpty
+                  ? _empty('No completed jobs')
+                  : _buildJobList(completedJobs, isCompleted: true),
 
-                const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-                const Text(
-                  'Accepted but Not Completed (Past Due)',
-                  style: TextStyle(
-                    color: Colors.orangeAccent,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                expiredPendingJobs.isEmpty
-                    ? _noDataCard('No pending overdue jobs')
-                    : _buildJobList(expiredPendingJobs, Colors.orangeAccent),
-              ],
-            ),
+              _sectionTitle(
+                'Accepted but Not Completed (Past Due)',
+                Colors.orangeAccent,
+              ),
+              overdueJobs.isEmpty
+                  ? _empty('No overdue jobs')
+                  : _buildJobList(overdueJobs, isCompleted: false),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _noDataCard(String message) {
+  Widget _sectionTitle(String text, Color color) {
+    return Text(
+      text,
+      style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _empty(String text) {
     return Container(
+      margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF2C3243),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
-        child: Text(message, style: const TextStyle(color: Colors.white70)),
+        child: Text(text, style: const TextStyle(color: Colors.white70)),
       ),
     );
   }
 
-  Widget _buildJobList(List<QueryDocumentSnapshot> jobs, Color color) {
+  Widget _buildJobList(
+    List<QueryDocumentSnapshot> jobs, {
+    required bool isCompleted,
+  }) {
     return Column(
       children: jobs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        final workerName = data['workerName'] ?? 'Unknown Worker';
-        final description = data['fixDescription'] ?? '';
-        final status = data['status'] ?? 'N/A';
+        final workerName = data['workerName'] ?? 'Worker';
         final workerId = data['workerId'] ?? '';
-        String displayDate = 'N/A';
-        if (data['requestedDate'] != null &&
-            data['requestedDate'] is Timestamp) {
-          displayDate = displayFormat.format(
-            (data['requestedDate'] as Timestamp).toDate(),
-          );
-        }
+        final description = data['fixDescription'] ?? '';
+        final date = data['requestedDate'] is Timestamp
+            ? displayFormat.format(
+                (data['requestedDate'] as Timestamp).toDate(),
+              )
+            : 'N/A';
 
-        return FutureBuilder<DocumentSnapshot>(
-          future: FirebaseFirestore.instance
-              .collection('workers')
-              .doc(workerId)
-              .get(),
-          builder: (context, snapshot) {
-            String profession = 'Unknown Profession';
-            if (data['profession'] != null &&
-                (data['profession'] as String).isNotEmpty) {
-              profession = data['profession'];
-            } else if (snapshot.hasData && snapshot.data!.exists) {
-              profession = snapshot.data!['profession'] ?? 'Unknown Profession';
-            }
-            return Card(
-              color: const Color(0xFF2C3243),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        return Card(
+          color: const Color(0xFF2C3243),
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ListTile(
+            leading: const Icon(Icons.build, color: kAccentColor),
+            title: Text(
+              workerName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              child: ListTile(
-                leading: Icon(Icons.build_circle, color: color, size: 32),
-                title: Text(
-                  workerName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+            ),
+            subtitle: Text(
+              'Date: $date\n$description',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            onTap: () {
+              if (isCompleted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RateWorkerScreen(
+                      workerId: workerId,
+                      workerName: workerName,
+                    ),
                   ),
-                ),
-                subtitle: Text(
-                  '$profession\nDate: $displayDate\nDetails: $description\nStatus: $status',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                onTap: workerId.toString().isNotEmpty
-                    ? () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => RateWorkerScreen(
-                            workerId: workerId,
-                            workerName: workerName,
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-            );
-          },
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ReportIssueScreen(
+                      workerId: workerId,
+                      workerName: workerName,
+                      workRequestId: doc.id,
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
         );
       }).toList(),
     );

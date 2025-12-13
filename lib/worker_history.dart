@@ -1,243 +1,253 @@
-// lib/screens/worker_history.dart
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-const Color kBackgroundColor = Color(0xFF222733);
-const Color kCardColor = Color.fromARGB(255, 188, 117, 3);
-const Color kAccentColor = Color(0xFFFFD34E);
+const Color kBg = Color(0xFF1E2432);
+const Color kCard = Color(0xFF2C3243);
+const Color kAccent = Color(0xFFFFD34E);
 
-class WorkerHistoryScreen extends StatelessWidget {
+class WorkerHistoryScreen extends StatefulWidget {
   const WorkerHistoryScreen({super.key});
 
   @override
+  State<WorkerHistoryScreen> createState() => _WorkerHistoryScreenState();
+}
+
+class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
+  final String myId = FirebaseAuth.instance.currentUser!.uid;
+  final DateFormat df = DateFormat('dd MMM yyyy');
+
+  bool _isOverdue(Map<String, dynamic> d) {
+    if (d['requestedDate'] is! Timestamp) return false;
+    final date = (d['requestedDate'] as Timestamp).toDate();
+    final today = DateTime.now();
+    return date.isBefore(DateTime(today.year, today.month, today.day));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return Scaffold(
-        backgroundColor: kBackgroundColor,
-        appBar: AppBar(
-          title: const Text('Job History'),
-          backgroundColor: kBackgroundColor,
-        ),
-        body: const Center(
-          child: Text('Please login', style: TextStyle(color: Colors.white)),
-        ),
-      );
-    }
-
-    final workerId = user.uid;
-
     return Scaffold(
-      backgroundColor: kBackgroundColor,
+      backgroundColor: kBg,
       appBar: AppBar(
-        title: const Text('Completed Jobs (Worker)'),
-        backgroundColor: kBackgroundColor,
+        title: const Text('Work History'),
+        backgroundColor: kBg,
+        foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('work_requests')
-            .where('status', isEqualTo: 'completed')
-            .where('workerId', isEqualTo: workerId)
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snap) {
-          if (snap.hasError) {
-            return Center(
-              child: Text(
-                'Error: ${snap.error}',
-                style: const TextStyle(color: Colors.redAccent),
-              ),
-            );
-          }
-
           if (!snap.hasData) {
             return const Center(
-              child: CircularProgressIndicator(color: kAccentColor),
+              child: CircularProgressIndicator(color: kAccent),
             );
           }
 
-          final docs = snap.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'No completed jobs yet',
-                style: TextStyle(color: Colors.white70),
+          final all = snap.data!.docs
+              .map((d) => d.data() as Map<String, dynamic>)
+              .toList();
+
+          final completedByMe = all.where((d) =>
+              d['workerId'] == myId && d['status'] == 'completed');
+
+          final overdueByMe = all.where((d) =>
+              d['workerId'] == myId &&
+              d['status'] == 'accepted' &&
+              _isOverdue(d));
+
+          final completedForMe = all.where((d) =>
+              d['userId'] == myId &&
+              d['workerId'] != myId &&
+              d['status'] == 'completed');
+
+          final overdueForMe = all.where((d) =>
+              d['userId'] == myId &&
+              d['workerId'] != myId &&
+              d['status'] == 'accepted' &&
+              _isOverdue(d));
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _section('Works Completed by You', Colors.greenAccent),
+              _list(completedByMe.toList()),
+
+              const SizedBox(height: 24),
+              _section('Accepted by You (Overdue)', Colors.orangeAccent),
+              _list(overdueByMe.toList()),
+
+              const SizedBox(height: 24),
+              _section(
+                'Your Requests Completed by Other Workers',
+                Colors.lightBlueAccent,
               ),
-            );
-          }
+              _list(completedForMe.toList()),
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, i) {
-              final req = docs[i].data()! as Map<String, dynamic>;
-
-              // userId might be stored as userId or createdBy; coerce to string safely
-              final rawUserId = (req['userId'] ?? req['createdBy'] ?? '')
-                  .toString()
-                  .trim();
-              if (rawUserId.isEmpty) {
-                // nothing we can show for this row
-                return const SizedBox.shrink();
-              }
-              final userId = rawUserId;
-
-              final requestedDate = req['requestedDate'];
-              final fixDescription = (req['fixDescription'] ?? '').toString();
-              final timestamp = req['timestamp'] as Timestamp?;
-              final tsText = timestamp != null
-                  ? timestamp.toDate().toLocal().toString()
-                  : '';
-
-              // fetch customer profile
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(userId)
-                    .get(),
-                builder: (context, userSnap) {
-                  // show a light placeholder while loading profile
-                  if (userSnap.connectionState == ConnectionState.waiting) {
-                    return Card(
-                      color: kCardColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: const [
-                            CircleAvatar(
-                              radius: 30,
-                              backgroundColor: Colors.white12,
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Loading customer...',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  // defaults
-                  String name = 'Customer';
-                  String address = req['location']?.toString() ?? '';
-                  String phone = req['workerMobile']?.toString() ?? '';
-                  String? photoUrl;
-
-                  if (userSnap.hasData && userSnap.data!.exists) {
-                    final data =
-                        userSnap.data!.data() as Map<String, dynamic>? ?? {};
-                    name = (data['fullName'] ?? name).toString();
-                    address = (data['location'] ?? data['address'] ?? address)
-                        .toString();
-                    phone = (data['mobile'] ?? phone).toString();
-                    photoUrl = data['profilePhotoUrl']?.toString();
-                  }
-
-                  final ImageProvider imageProvider =
-                      (photoUrl != null && photoUrl.trim().isNotEmpty)
-                      ? NetworkImage(photoUrl)
-                      : const AssetImage('assets/default_profile.png');
-
-                  return Card(
-                    color: kCardColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundImage: imageProvider,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                if (address.isNotEmpty)
-                                  Text(
-                                    address,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Phone: ${phone}',
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Job: $fixDescription',
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                                const SizedBox(height: 6),
-                                if (requestedDate != null)
-                                  Text(
-                                    'Requested: ${_formatDateLike(requestedDate)}',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                if (tsText.isNotEmpty)
-                                  Text(
-                                    'Completed: $tsText',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.phone, color: Colors.green),
-                            onPressed: () {
-                              // optional: dial phone using url_launcher
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
+              const SizedBox(height: 24),
+              _section(
+                'Your Requests Pending with Other Workers',
+                Colors.redAccent,
+              ),
+              _list(overdueForMe.toList()),
+            ],
           );
         },
       ),
     );
   }
-}
 
-String _formatDateLike(dynamic value) {
-  try {
-    if (value is Timestamp) return value.toDate().toLocal().toString();
-    if (value is DateTime) return value.toLocal().toString();
-    return value?.toString() ?? '';
-  } catch (_) {
-    return value?.toString() ?? '';
+  Widget _section(String text, Color color) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: color,
+      ),
+    );
+  }
+
+  /// ================= CORE FIX IS HERE =================
+  Widget _list(List<Map<String, dynamic>> items) {
+    if (items.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: kCard,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text(
+          'No records',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+
+    return Column(
+      children: items.map((d) {
+        final bool iAmWorker = d['workerId'] == myId;
+        final String otherId = iAmWorker ? d['userId'] : d['workerId'];
+
+        final String date = d['requestedDate'] is Timestamp
+            ? df.format((d['requestedDate'] as Timestamp).toDate())
+            : 'N/A';
+
+        // 🔁 TRY USERS FIRST
+        return FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('users')
+              .doc(otherId)
+              .get(),
+          builder: (context, userSnap) {
+            if (userSnap.hasData && userSnap.data!.exists) {
+              final u = userSnap.data!.data() as Map<String, dynamic>;
+              return _jobCard(
+                name: u['fullName'] ?? 'User',
+                date: date,
+                d: d,
+              );
+            }
+
+            // 🔁 FALLBACK TO WORKERS
+            return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('workers')
+                  .doc(otherId)
+                  .get(),
+              builder: (context, workerSnap) {
+                String name = 'Unknown';
+
+                if (workerSnap.hasData && workerSnap.data!.exists) {
+                  final w =
+                      workerSnap.data!.data() as Map<String, dynamic>;
+                  name = w['fullName'] ?? 'Worker';
+                }
+
+                return _jobCard(
+                  name: name,
+                  date: date,
+                  d: d,
+                );
+              },
+            );
+          },
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _jobCard({
+    required String name,
+    required String date,
+    required Map<String, dynamic> d,
+  }) {
+    return Card(
+      color: kCard,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.assignment, color: kAccent),
+        title: Text(
+          name,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Text(
+          'Date: $date\n${d['fixDescription'] ?? ''}',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        onTap: () => _details(context, d, name, date),
+      ),
+    );
+  }
+
+  void _details(
+    BuildContext context,
+    Map<String, dynamic> d,
+    String name,
+    String date,
+  ) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: kBg,
+        title: Text(name, style: const TextStyle(color: kAccent)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _row('Status', d['status']),
+            _row('Date', date),
+            _row('Problem', d['fixDescription']),
+            _row('Phone', d['userMobile'] ?? d['workerMobile']),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close', style: TextStyle(color: kAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, dynamic value) {
+    if (value == null || value.toString().isEmpty) return const SizedBox();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(color: Colors.white70),
+      ),
+    );
   }
 }
