@@ -128,6 +128,11 @@ class _RegisterScreenState extends State<RegisterScreen>
             'profession': selectedProfession,
             'aadhaar': aadhaarController.text.trim(),
             'isApproved': false, // <-- newly added
+            'aadhaarVerified': false,
+            'aadhaarVerifiedAt': null,
+            'verifiedAt': null,
+            'status': 'pending',
+            'createdAt': FieldValue.serverTimestamp(),
           });
         }
 

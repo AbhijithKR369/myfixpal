@@ -15,7 +15,6 @@ final ThemeData appTheme = ThemeData(
   colorScheme: ColorScheme.fromSeed(seedColor: kPrimaryColor),
   appBarTheme: const AppBarTheme(
     backgroundColor: kBackgroundColor,
-    foregroundColor: Color.fromARGB(255, 34, 39, 51),
     elevation: 2,
     centerTitle: true,
     titleTextStyle: TextStyle(
@@ -24,26 +23,6 @@ final ThemeData appTheme = ThemeData(
       fontWeight: FontWeight.bold,
     ),
     iconTheme: IconThemeData(color: Colors.white),
-  ),
-  elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: kAccentColor,
-      foregroundColor: Colors.black,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      padding: const EdgeInsets.symmetric(vertical: 16),
-    ),
-  ),
-  inputDecorationTheme: InputDecorationTheme(
-    filled: true,
-    fillColor: kCardColor,
-    labelStyle: const TextStyle(color: Colors.white),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(20),
-      borderSide: const BorderSide(color: kAccentColor, width: 2),
-    ),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-    prefixIconColor: kAccentColor,
   ),
 );
 
@@ -62,35 +41,62 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
     'Carpenter',
     'Plumber',
   ];
+
   String? selectedProfession;
   final TextEditingController pincodeController = TextEditingController();
 
-  // Safe parsing helpers
+  String? selectedLocation;
+  List<String> availableLocations = [];
+
+  // ---------- HELPERS ----------
   double _toDouble(dynamic v) {
     if (v == null) return 0.0;
     if (v is num) return v.toDouble();
-    try {
-      return double.parse(v.toString());
-    } catch (_) {
-      return 0.0;
-    }
+    return double.tryParse(v.toString()) ?? 0.0;
   }
 
   int _toInt(dynamic v) {
     if (v == null) return 0;
     if (v is int) return v;
     if (v is double) return v.toInt();
-    try {
-      return int.parse(v.toString());
-    } catch (_) {
-      return 0;
-    }
+    return int.tryParse(v.toString()) ?? 0;
   }
+
+  String _normalize(String v) => v.trim().toLowerCase();
 
   @override
   void dispose() {
     pincodeController.dispose();
     super.dispose();
+  }
+
+  // ---------- FETCH LOCATIONS FOR EXACT PINCODE ----------
+  Future<void> fetchLocationsForPincode(String pincode) async {
+    selectedLocation = null;
+    availableLocations.clear();
+
+    if (pincode.length != 6) {
+      setState(() {});
+      return;
+    }
+
+    final snap = await FirebaseFirestore.instance
+        .collection('workers')
+        .where('isApproved', isEqualTo: true)
+        .where('pincode', isEqualTo: pincode.trim())
+        .get();
+
+    final Set<String> locations = {};
+
+    for (var doc in snap.docs) {
+      final loc = (doc['location'] ?? '').toString().trim();
+      if (loc.isNotEmpty) {
+        locations.add(_normalize(loc));
+      }
+    }
+
+    availableLocations = locations.toList()..sort();
+    setState(() {});
   }
 
   @override
@@ -116,6 +122,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            /// -------- PROFESSION DROPDOWN --------
             Container(
               decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 161, 198, 234),
@@ -123,9 +130,6 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
               ),
               child: DropdownButtonFormField<String>(
                 dropdownColor: const Color.fromARGB(255, 161, 198, 234),
-                style: const TextStyle(
-                  color: Color.fromARGB(255, 161, 198, 234),
-                ),
                 decoration: const InputDecoration(
                   labelText: 'Select Profession',
                   prefixIcon: Icon(Icons.work),
@@ -135,18 +139,20 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                     .map(
                       (p) => DropdownMenuItem(
                         value: p,
-                        child: Text(
-                          p,
-                          style: const TextStyle(color: Colors.black),
-                        ),
+                        child: Text(p,
+                            style:
+                                const TextStyle(color: Colors.black)),
                       ),
                     )
                     .toList(),
-                initialValue: selectedProfession,
+                value: selectedProfession,
                 onChanged: (val) => setState(() => selectedProfession = val),
               ),
             ),
+
             const SizedBox(height: 16),
+
+            /// -------- PINCODE FIELD --------
             Container(
               decoration: BoxDecoration(
                 color: const Color.fromARGB(225, 161, 198, 234),
@@ -161,10 +167,47 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                   border: InputBorder.none,
                 ),
                 style: const TextStyle(color: Colors.white),
-                onChanged: (_) => setState(() {}),
+                onChanged: fetchLocationsForPincode,
               ),
             ),
+
+            /// -------- LOCATION DROPDOWN --------
+            if (availableLocations.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 161, 198, 234),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: DropdownButtonFormField<String>(
+                  dropdownColor: const Color.fromARGB(255, 161, 198, 234),
+                  decoration: const InputDecoration(
+                    labelText: 'Select Location',
+                    prefixIcon: Icon(Icons.place),
+                    border: InputBorder.none,
+                  ),
+                  value: selectedLocation,
+                  items: availableLocations
+                      .map(
+                        (loc) => DropdownMenuItem(
+                          value: loc,
+                          child: Text(
+                            loc,
+                            style:
+                                const TextStyle(color: Colors.black),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) =>
+                      setState(() => selectedLocation = val),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 16),
+
+            /// -------- WORKER LIST (OLD DESIGN) --------
             Expanded(
               child: selectedProfession == null
                   ? const Center(
@@ -174,53 +217,72 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                       ),
                     )
                   : StreamBuilder<QuerySnapshot>(
-                      // IMPORTANT: only show approved workers
                       stream: FirebaseFirestore.instance
                           .collection('workers')
-                          .where('profession', isEqualTo: selectedProfession)
+                          .where('profession',
+                              isEqualTo: selectedProfession)
                           .where('isApproved', isEqualTo: true)
                           .snapshots(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
                           return const Center(
                             child: CircularProgressIndicator(
-                              color: kAccentColor,
-                            ),
+                                color: kAccentColor),
                           );
                         }
 
                         final docs = snapshot.data!.docs;
-                        final sortedDocs = [...docs];
-                        sortedDocs.sort((a, b) {
-                          final aData = a.data()! as Map<String, dynamic>;
-                          final bData = b.data()! as Map<String, dynamic>;
+
+                        /// FILTER
+                        final filteredDocs = docs.where((doc) {
+                          final data =
+                              doc.data() as Map<String, dynamic>;
+
+                          if (pincodeController.text.trim().length ==
+                              6) {
+                            if (data['pincode']
+                                    ?.toString()
+                                    .trim() !=
+                                pincodeController.text.trim()) {
+                              return false;
+                            }
+                          }
+
+                          if (selectedLocation != null) {
+                            final loc =
+                                _normalize(data['location'] ?? '');
+                            if (loc != selectedLocation) return false;
+                          }
+
+                          return true;
+                        }).toList();
+
+                        /// SORT (OLD LOGIC)
+                        filteredDocs.sort((a, b) {
+                          final aData =
+                              a.data() as Map<String, dynamic>;
+                          final bData =
+                              b.data() as Map<String, dynamic>;
+
                           final aRating = _toDouble(aData['rating']);
                           final bRating = _toDouble(bData['rating']);
-                          final aCount = _toInt(aData['ratingCount']);
-                          final bCount = _toInt(bData['ratingCount']);
+                          final aCount =
+                              _toInt(aData['ratingCount']);
+                          final bCount =
+                              _toInt(bData['ratingCount']);
+
                           if (bRating.compareTo(aRating) != 0) {
                             return bRating.compareTo(aRating);
-                          } else {
-                            return bCount.compareTo(aCount);
                           }
+                          return bCount.compareTo(aCount);
                         });
-
-                        final filteredDocs = (pincodeController.text.isNotEmpty)
-                            ? sortedDocs.where((doc) {
-                                final pin = (doc['pincode'] ?? '')
-                                    .toString()
-                                    .trim();
-                                return pin.startsWith(
-                                  pincodeController.text.trim(),
-                                );
-                              }).toList()
-                            : sortedDocs;
 
                         if (filteredDocs.isEmpty) {
                           return const Center(
                             child: Text(
                               'No workers found',
-                              style: TextStyle(color: Colors.white70),
+                              style:
+                                  TextStyle(color: Colors.white70),
                             ),
                           );
                         }
@@ -231,17 +293,25 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                               const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final doc = filteredDocs[index];
-                            final data = doc.data()! as Map<String, dynamic>;
-                            final photoUrl = data['profilePhotoUrl'] ?? '';
-                            final name = data['fullName'] ?? 'No Name';
-                            final mobile = data['mobile'] ?? 'No Number';
-                            final avgRating = _toDouble(data['rating']);
-                            final ratingCount = _toInt(data['ratingCount']);
+                            final data =
+                                doc.data() as Map<String, dynamic>;
+
+                            final photoUrl =
+                                data['profilePhotoUrl'] ?? '';
+                            final name =
+                                data['fullName'] ?? 'No Name';
+                            final mobile =
+                                data['mobile'] ?? 'No Number';
+                            final avgRating =
+                                _toDouble(data['rating']);
+                            final ratingCount =
+                                _toInt(data['ratingCount']);
 
                             return Card(
                               color: kCardColor,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius:
+                                    BorderRadius.circular(16),
                               ),
                               child: ListTile(
                                 leading: CircleAvatar(
@@ -249,9 +319,8 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                   backgroundImage: photoUrl != ''
                                       ? NetworkImage(photoUrl)
                                       : const AssetImage(
-                                              'assets/default_profile.png',
-                                            )
-                                            as ImageProvider,
+                                              'assets/default_profile.png')
+                                          as ImageProvider,
                                 ),
                                 title: Text(
                                   name,
@@ -261,16 +330,15 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                   ),
                                 ),
                                 subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
-                                        const Icon(
-                                          Icons.star,
-                                          color: Colors.amber,
-                                          size: 16,
-                                        ),
+                                        const Icon(Icons.star,
+                                            color: Colors.amber,
+                                            size: 16),
                                         const SizedBox(width: 4),
                                         Text(
                                           ratingCount > 0
@@ -286,11 +354,9 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
-                                        const Icon(
-                                          Icons.phone,
-                                          size: 16,
-                                          color: Colors.green,
-                                        ),
+                                        const Icon(Icons.phone,
+                                            size: 16,
+                                            color: Colors.green),
                                         const SizedBox(width: 4),
                                         Text(
                                           mobile,
@@ -310,7 +376,8 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) => ServiceRequestScreen(
+                                      builder: (_) =>
+                                          ServiceRequestScreen(
                                         workerId: doc.id,
                                         workerName: name,
                                         workerMobile: mobile,
@@ -331,6 +398,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
     );
   }
 }
+
 
 /// -------- SERVICE REQUEST SCREEN with REVIEWS section ---------
 class ServiceRequestScreen extends StatefulWidget {
