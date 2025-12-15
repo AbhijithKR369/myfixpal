@@ -71,11 +71,15 @@ class NotificationScreen extends StatelessWidget {
               Color color;
               String message;
 
-              // ✅ Status-based notifications
+             // ✅ Status-based notifications
               if (status == 'accepted') {
                 icon = Icons.check_circle;
                 color = Colors.greenAccent;
                 message = 'Your job request was accepted by $workerName';
+              } else if (status == 'cancelled') {
+                icon = Icons.warning_amber_rounded;
+                color = Colors.orangeAccent;
+                message = 'Your job was cancelled by $workerName';
               } else if (status == 'rejected') {
                 icon = Icons.cancel;
                 color = Colors.redAccent;
@@ -90,6 +94,7 @@ class NotificationScreen extends StatelessWidget {
                 color = Colors.amberAccent;
                 message = 'Your job request is still pending.';
               }
+
 
               return Card(
                 color: const Color(0xFF2B2F3A),
@@ -122,7 +127,7 @@ class NotificationScreen extends StatelessWidget {
                           fontSize: 12,
                         ),
                       ),
-                      if (status == 'accepted')
+                      if (status == 'accepted' || status == 'cancelled')
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton.icon(

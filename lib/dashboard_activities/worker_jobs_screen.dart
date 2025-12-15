@@ -95,8 +95,9 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
         /// 🔴 FILTER PAST-DUE JOBS HERE
         final docs = snap.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          return !_isPastDue(data);
+          return !_isPastDue(data) && data['status'] != 'cancelled';
         }).toList();
+
 
         if (docs.isEmpty) {
           return const Center(
@@ -354,7 +355,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
     return null;
   }
 
-  /// 🔽 MODALS REMAIN 100% UNCHANGED BELOW
   /// (_showPendingJobDetailModal & _showJobRequestDetailModal)
 
 
@@ -494,6 +494,58 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                     }
                   },
                 ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.cancel),
+                  label: const Text('Cancel Job'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Cancel Job'),
+                        content: const Text(
+                          'Are you sure you want to cancel this job?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('No'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Yes'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmed == true) {
+                      await ref.update({
+                        'status': 'cancelled',
+                        'cancelledAt': FieldValue.serverTimestamp(),
+                      });
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Job cancelled successfully'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+
               ],
             ),
           ),

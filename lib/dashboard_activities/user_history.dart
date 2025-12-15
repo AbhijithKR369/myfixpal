@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:myfixpal/dashboard_activities/woker_ratings.dart';
 import 'package:myfixpal/report_issue_screen.dart';
+import '../dashboard_activities/service_browse.dart';
 
 const Color kAccentColor = Color(0xFFFFD34E);
 
@@ -154,33 +155,114 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
               'Date: $date\n$description',
               style: const TextStyle(color: Colors.white70),
             ),
-            onTap: () {
-              if (isCompleted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RateWorkerScreen(
-                      workerId: workerId,
-                      workerName: workerName,
-                    ),
-                  ),
-                );
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ReportIssueScreen(
-                      workerId: workerId,
-                      workerName: workerName,
-                      workRequestId: doc.id,
-                    ),
-                  ),
-                );
-              }
-            },
+            onTap: () => _showJobActions(
+              context: context,
+              isCompleted: isCompleted,
+              workerId: workerId,
+              workerName: workerName,
+              workRequestId: doc.id,
+            ),
           ),
         );
       }).toList(),
+    );
+  }
+
+  /// 🔹 ACTION SELECTOR
+  void _showJobActions({
+    required BuildContext context,
+    required bool isCompleted,
+    required String workerId,
+    required String workerName,
+    required String workRequestId,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF2C3243),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(
+                isCompleted ? Icons.star : Icons.report_problem,
+                color: kAccentColor,
+              ),
+              title: Text(
+                isCompleted ? 'Rate Worker' : 'Report Issue',
+                style: const TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => isCompleted
+                        ? RateWorkerScreen(
+                            workerId: workerId,
+                            workerName: workerName,
+                          )
+                        : ReportIssueScreen(
+                            workerId: workerId,
+                            workerName: workerName,
+                            workRequestId: workRequestId,
+                          ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                isCompleted ? Icons.report_problem : Icons.calendar_today,
+                color: Colors.orangeAccent,
+              ),
+              title: Text(
+                isCompleted ? 'Report Issue' : 'Reschedule Job',
+                style: const TextStyle(color: Colors.white),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+
+                if (isCompleted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReportIssueScreen(
+                        workerId: workerId,
+                        workerName: workerName,
+                        workRequestId: workRequestId,
+                      ),
+                    ),
+                  );
+                } else {
+                  await FirebaseFirestore.instance
+                      .collection('work_requests')
+                      .doc(workRequestId)
+                      .update({'status': 'pending'});
+
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ServiceRequestScreen(
+                          workerId: workerId,
+                          workerName: workerName,
+                          workerMobile: '',
+                          workRequestId: workRequestId,
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
     );
   }
 }

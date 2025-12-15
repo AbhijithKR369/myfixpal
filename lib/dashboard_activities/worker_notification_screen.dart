@@ -196,22 +196,32 @@ class WorkerNotificationScreen extends StatelessWidget {
                     color = Colors.greenAccent;
                     message = '$workerNameStr accepted your job request';
                     break;
+
                   case 'rejected':
                     icon = Icons.cancel;
                     color = Colors.redAccent;
                     message = '$workerNameStr rejected your job request';
                     break;
+
+                  case 'cancelled':
+                    icon = Icons.cancel;
+                    color = Colors.orangeAccent;
+                    message = '$workerNameStr cancelled your job request';
+                    break;
+
                   case 'completed':
                   case 'complete':
                     icon = Icons.done_all;
                     color = Colors.blueAccent;
                     message = '$workerNameStr completed the work';
                     break;
+
                   default:
                     icon = Icons.hourglass_empty;
                     color = Colors.amberAccent;
                     message = 'Job request pending with $workerNameStr';
                 }
+
 
                 return _notificationCard(
                   icon: icon,
@@ -219,7 +229,7 @@ class WorkerNotificationScreen extends StatelessWidget {
                   title: message,
                   description: description,
                   date: date,
-                  trailing: (status == 'accepted')
+                  trailing: (status == 'accepted' || status == 'cancelled')
                       ? TextButton.icon(
                           icon: const Icon(
                             Icons.refresh,
@@ -311,22 +321,32 @@ class WorkerNotificationScreen extends StatelessWidget {
                       color = Colors.greenAccent;
                       message = 'You accepted a job from $userName';
                       break;
+
                     case 'rejected':
                       icon = Icons.cancel;
                       color = Colors.redAccent;
                       message = 'You rejected a job from $userName';
                       break;
+
+                    case 'cancelled':
+                      icon = Icons.cancel;
+                      color = Colors.orangeAccent;
+                      message = 'You cancelled a job from $userName';
+                      break;
+
                     case 'completed':
                     case 'complete':
                       icon = Icons.done_all;
                       color = Colors.blueAccent;
                       message = 'You completed work for $userName';
                       break;
+
                     default:
                       icon = Icons.hourglass_empty;
                       color = Colors.amberAccent;
                       message = 'New job request from $userName';
                   }
+
 
                   return _notificationCard(
                     icon: icon,
