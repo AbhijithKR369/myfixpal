@@ -1,4 +1,5 @@
 // lib/screens/service_browse.dart
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -83,6 +84,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
     final snap = await FirebaseFirestore.instance
         .collection('workers')
         .where('isApproved', isEqualTo: true)
+        .where('isAvailable', isEqualTo: true) 
         .where('pincode', isEqualTo: pincode.trim())
         .get();
 
@@ -222,6 +224,7 @@ class _ServiceBrowseScreenState extends State<ServiceBrowseScreen> {
                           .where('profession',
                               isEqualTo: selectedProfession)
                           .where('isApproved', isEqualTo: true)
+                          .where('isAvailable', isEqualTo: true)
                           .snapshots(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
@@ -428,6 +431,9 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
   final TextEditingController descriptionController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  bool _profileValid = false;
+  bool _profileChecked = false;
+
   @override
   void initState() {
     super.initState();
@@ -436,6 +442,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
     }
     selectedDate = widget.prefilledDate;
     descriptionController.addListener(() => setState(() {}));
+    _checkUserProfile();
   }
 
   @override
@@ -455,9 +462,32 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
         ),
         backgroundColor: kBackgroundColor,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      body: !_profileChecked
+    ? const Center(
+        child: CircularProgressIndicator(color: kAccentColor),
+      )
+    : !_profileValid
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.warning, color: Colors.amber, size: 48),
+                SizedBox(height: 12),
+                Text(
+                  'Update your profile from User Profile',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          )
+        : Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Card(
@@ -474,8 +504,13 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.call, color: Colors.green),
+                  onPressed: () => _callWorker(widget.workerMobile),
+                ),
               ),
             ),
+
             const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: const Icon(Icons.calendar_today, color: kAccentColor),
@@ -558,6 +593,71 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
       ),
     );
   }
+Future<void> _callWorker(String phone) async {
+  final Uri uri = Uri.parse('tel:$phone');
+
+  try {
+    await launchUrl(
+      uri,
+      mode: LaunchMode.platformDefault,
+    );
+  } catch (_) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dialer not available on this device')),
+      );
+    }
+  }
+}
+
+
+Future<void> _checkUserProfile() async {
+  final user = _auth.currentUser;
+  if (user == null) {
+    _profileValid = false;
+    _profileChecked = true;
+    setState(() {});
+    return;
+  }
+
+  Map<String, dynamic>? data;
+
+  // 1️⃣ Check if worker
+  final workerSnap = await FirebaseFirestore.instance
+      .collection('workers')
+      .doc(user.uid)
+      .get();
+
+  if (workerSnap.exists) {
+    data = workerSnap.data();
+  } else {
+    // 2️⃣ Else normal user
+    final userSnap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (!userSnap.exists) {
+      _profileValid = false;
+      _profileChecked = true;
+      setState(() {});
+      return;
+    }
+    data = userSnap.data();
+  }
+
+  // 3️⃣ Validate required fields
+  final address = (data?['address'] ?? '').toString().trim();
+  final location = (data?['location'] ?? '').toString().trim();
+  final pincode = (data?['pincode'] ?? '').toString().trim();
+
+  _profileValid =
+      address.isNotEmpty && location.isNotEmpty && pincode.length == 6;
+
+  _profileChecked = true;
+  setState(() {});
+}
+
 
   /// Review list for worker -- with reviewer's profile image and name
   Widget _buildReviewsSection() {
@@ -710,6 +810,14 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Login required')));
+      return;
+    }
+    if (!_profileValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Update your profile before requesting a service'),
+        ),
+      );
       return;
     }
 

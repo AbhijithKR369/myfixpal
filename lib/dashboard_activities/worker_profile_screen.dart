@@ -187,17 +187,10 @@ class WorkerProfileScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: const Color.fromARGB(255, 17, 37, 40),
           appBar: AppBar(
-            title: const Text(
-              "WORKER Profile",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-              ),
-            ),
             backgroundColor: const Color.fromARGB(255, 17, 37, 40),
             iconTheme: const IconThemeData(color: Colors.white),
           ),
+
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -235,6 +228,34 @@ class WorkerProfileScreen extends StatelessWidget {
                   style: const TextStyle(fontSize: 18, color: Colors.grey),
                 ),
               ),
+              const SizedBox(height: 20),
+              Card(
+                color: backgroundColor.withOpacity(0.85),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: SwitchListTile(
+                  activeColor: accentColor,
+                  title: const Text(
+                    'Available for work',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    (data['isAvailable'] ?? true)
+                        ? 'You are visible to customers'
+                        : 'You are hidden from search',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  value: data['isAvailable'] ?? true,
+                  onChanged: (val) async {
+                    await FirebaseFirestore.instance
+                        .collection('workers')
+                        .doc(userId)
+                        .update({'isAvailable': val});
+                  },
+                ),
+              ),
+
               const SizedBox(height: 30),
               ListTile(
                 leading: const Icon(Icons.edit, color: accentColor),
