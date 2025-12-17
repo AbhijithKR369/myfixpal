@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:myfixpal/report_issue_screen.dart';
 
 const Color kBg = Color(0xFF1E2432);
 const Color kCard = Color(0xFF2C3243);
@@ -47,27 +48,34 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
           }
 
           final all = snap.data!.docs
-              .map((d) => d.data() as Map<String, dynamic>)
+              .map((d) => {...d.data() as Map<String, dynamic>, 'docId': d.id})
               .toList();
 
-          final completedByMe = all.where((d) =>
-              d['workerId'] == myId && d['status'] == 'completed');
+          final completedByMe = all.where(
+            (d) => d['workerId'] == myId && d['status'] == 'completed',
+          );
 
-          final overdueByMe = all.where((d) =>
-              d['workerId'] == myId &&
-              d['status'] == 'accepted' &&
-              _isOverdue(d));
+          final overdueByMe = all.where(
+            (d) =>
+                d['workerId'] == myId &&
+                d['status'] == 'accepted' &&
+                _isOverdue(d),
+          );
 
-          final completedForMe = all.where((d) =>
-              d['userId'] == myId &&
-              d['workerId'] != myId &&
-              d['status'] == 'completed');
+          final completedForMe = all.where(
+            (d) =>
+                d['userId'] == myId &&
+                d['workerId'] != myId &&
+                d['status'] == 'completed',
+          );
 
-          final overdueForMe = all.where((d) =>
-              d['userId'] == myId &&
-              d['workerId'] != myId &&
-              d['status'] == 'accepted' &&
-              _isOverdue(d));
+          final overdueForMe = all.where(
+            (d) =>
+                d['userId'] == myId &&
+                d['workerId'] != myId &&
+                d['status'] == 'accepted' &&
+                _isOverdue(d),
+          );
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -102,15 +110,10 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
   Widget _section(String text, Color color) {
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        color: color,
-      ),
+      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
     );
   }
 
-  /// ================= CORE FIX IS HERE =================
   Widget _list(List<Map<String, dynamic>> items) {
     if (items.isEmpty) {
       return Container(
@@ -136,7 +139,6 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
             ? df.format((d['requestedDate'] as Timestamp).toDate())
             : 'N/A';
 
-        // 🔁 TRY USERS FIRST
         return FutureBuilder<DocumentSnapshot>(
           future: FirebaseFirestore.instance
               .collection('users')
@@ -145,14 +147,9 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
           builder: (context, userSnap) {
             if (userSnap.hasData && userSnap.data!.exists) {
               final u = userSnap.data!.data() as Map<String, dynamic>;
-              return _jobCard(
-                name: u['fullName'] ?? 'User',
-                date: date,
-                d: d,
-              );
+              return _jobCard(u['fullName'] ?? 'User', date, d);
             }
 
-            // 🔁 FALLBACK TO WORKERS
             return FutureBuilder<DocumentSnapshot>(
               future: FirebaseFirestore.instance
                   .collection('workers')
@@ -160,18 +157,11 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
                   .get(),
               builder: (context, workerSnap) {
                 String name = 'Unknown';
-
                 if (workerSnap.hasData && workerSnap.data!.exists) {
-                  final w =
-                      workerSnap.data!.data() as Map<String, dynamic>;
+                  final w = workerSnap.data!.data() as Map<String, dynamic>;
                   name = w['fullName'] ?? 'Worker';
                 }
-
-                return _jobCard(
-                  name: name,
-                  date: date,
-                  d: d,
-                );
+                return _jobCard(name, date, d);
               },
             );
           },
@@ -180,19 +170,18 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
     );
   }
 
-  Widget _jobCard({
-    required String name,
-    required String date,
-    required Map<String, dynamic> d,
-  }) {
+  Widget _jobCard(String name, String date, Map<String, dynamic> d) {
+    final bool reportable = d['status'] == 'accepted' && d['workerId'] != myId;
+
     return Card(
       color: kCard,
       margin: const EdgeInsets.symmetric(vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        leading: const Icon(Icons.assignment, color: kAccent),
+        leading: Icon(
+          reportable ? Icons.report_problem : Icons.assignment,
+          color: reportable ? Colors.redAccent : kAccent,
+        ),
         title: Text(
           name,
           style: const TextStyle(
@@ -204,7 +193,22 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
           'Date: $date\n${d['fixDescription'] ?? ''}',
           style: const TextStyle(color: Colors.white70),
         ),
-        onTap: () => _details(context, d, name, date),
+        onTap: () {
+          if (reportable) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ReportIssueScreen(
+                  workerId: d['workerId'],
+                  workerName: name,
+                  workRequestId: d['docId'],
+                ),
+              ),
+            );
+          } else {
+            _details(context, d, name, date);
+          }
+        },
       ),
     );
   }

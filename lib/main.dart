@@ -14,7 +14,6 @@ import 'splash_screen.dart';
 import 'dashboard_activities/service_browse.dart';
 
 // Add these imports (update paths if your files are in different folders)
-import 'customer_history.dart';
 import 'worker_history.dart';
 
 void main() async {
@@ -51,7 +50,6 @@ class MyApp extends StatelessWidget {
             const UpdateProfileWorkerScreen(),
 
         // Profile & history routes
-        '/customer_history': (context) => const CustomerHistoryScreen(),
         '/worker_history': (context) => const WorkerHistoryScreen(),
       },
     );

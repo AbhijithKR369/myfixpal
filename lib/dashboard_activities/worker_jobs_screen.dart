@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const Color kBackgroundColor = Color(0xFF222733);
 const Color kCardColor = Color(0xFF2C3140);
@@ -26,7 +27,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
     workerId = FirebaseAuth.instance.currentUser?.uid ?? '';
   }
 
-  /// 🔴 NEW: Past-date check (used only for filtering)
   bool _isPastDue(Map<String, dynamic> data) {
     if (data['requestedDate'] is! Timestamp) return false;
     final jobDate = (data['requestedDate'] as Timestamp).toDate();
@@ -68,10 +68,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildJobsPendingGrouped(),
-          _buildJobRequestsGrouped(),
-        ],
+        children: [_buildJobsPendingGrouped(), _buildJobRequestsGrouped()],
       ),
     );
   }
@@ -98,7 +95,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
           return !_isPastDue(data) && data['status'] != 'cancelled';
         }).toList();
 
-
         if (docs.isEmpty) {
           return const Center(
             child: Text(
@@ -112,8 +108,9 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
         for (var doc in docs) {
           final data = doc.data() as Map<String, dynamic>;
           final dateKey = (data['requestedDate'] as Timestamp?) != null
-              ? DateFormat('yyyy-MM-dd')
-                  .format((data['requestedDate'] as Timestamp).toDate())
+              ? DateFormat(
+                  'yyyy-MM-dd',
+                ).format((data['requestedDate'] as Timestamp).toDate())
               : '';
           grouped.putIfAbsent(dateKey, () => []).add(doc);
         }
@@ -126,15 +123,15 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
             final dateKey = datesSorted[di];
             final dateJobs = grouped[dateKey]!;
             final displayDate = dateKey.isNotEmpty
-                ? DateFormat('dd/MM/yyyy - EEEE')
-                    .format(DateFormat('yyyy-MM-dd').parse(dateKey))
+                ? DateFormat(
+                    'dd/MM/yyyy - EEEE',
+                  ).format(DateFormat('yyyy-MM-dd').parse(dateKey))
                 : 'Unknown Date';
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (di > 0)
-                  const Divider(color: Colors.white24, height: 32),
+                if (di > 0) const Divider(color: Colors.white24, height: 32),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 18, 0, 6),
                   child: Text(
@@ -157,12 +154,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                         return const SizedBox();
                       }
                       final user = snapshot.data!;
-                      return _jobTile(
-                        doc.reference,
-                        job,
-                        user,
-                        pending: true,
-                      );
+                      return _jobTile(doc.reference, job, user, pending: true);
                     },
                   );
                 }),
@@ -171,6 +163,86 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
           },
         );
       },
+    );
+  }
+
+  void _showProfileDetails(BuildContext context, Map<String, dynamic> user) {
+    showModalBottomSheet(
+      backgroundColor: kCardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 42,
+              backgroundImage:
+                  user['profilePhotoUrl'] != null &&
+                      (user['profilePhotoUrl'] as String).isNotEmpty
+                  ? NetworkImage(user['profilePhotoUrl'])
+                  : const AssetImage('assets/default_profile.png')
+                        as ImageProvider,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              user['fullName'] ?? 'User',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+
+            /// 📞 PHONE (CLICKABLE)
+            if (user['mobile'] != null)
+              TextButton.icon(
+                icon: const Icon(Icons.call, color: kAccentColor),
+                label: Text(
+                  user['mobile'],
+                  style: const TextStyle(color: kAccentColor),
+                ),
+                onPressed: () {
+                  final number = user['mobile'];
+                  launchUrl(Uri.parse('tel:$number'));
+                },
+              ),
+
+            const Divider(color: Colors.white24, height: 28),
+
+            _profileRow(Icons.location_on, 'Location', user['location']),
+            _profileRow(Icons.home, 'Address', user['address']),
+            _profileRow(Icons.pin_drop, 'Pincode', user['pincode']),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _profileRow(IconData icon, String label, dynamic value) {
+    if (value == null || value.toString().isEmpty) {
+      return const SizedBox();
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: kAccentColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$label: $value',
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -209,8 +281,9 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
         for (var doc in docs) {
           final data = doc.data() as Map<String, dynamic>;
           final dateKey = (data['requestedDate'] as Timestamp?) != null
-              ? DateFormat('yyyy-MM-dd')
-                  .format((data['requestedDate'] as Timestamp).toDate())
+              ? DateFormat(
+                  'yyyy-MM-dd',
+                ).format((data['requestedDate'] as Timestamp).toDate())
               : '';
           grouped.putIfAbsent(dateKey, () => []).add(doc);
         }
@@ -224,15 +297,15 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
             final dateJobs = grouped[dateKey]!;
 
             final displayDate = dateKey.isNotEmpty
-                ? DateFormat('dd/MM/yyyy - EEEE')
-                    .format(DateFormat('yyyy-MM-dd').parse(dateKey))
+                ? DateFormat(
+                    'dd/MM/yyyy - EEEE',
+                  ).format(DateFormat('yyyy-MM-dd').parse(dateKey))
                 : 'Unknown Date';
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (di > 0)
-                  const Divider(color: Colors.white24, height: 32),
+                if (di > 0) const Divider(color: Colors.white24, height: 32),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 18, 0, 6),
                   child: Text(
@@ -255,12 +328,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                         return const SizedBox();
                       }
                       final user = snapshot.data!;
-                      return _jobTile(
-                        doc.reference,
-                        job,
-                        user,
-                        pending: false,
-                      );
+                      return _jobTile(doc.reference, job, user, pending: false);
                     },
                   );
                 }),
@@ -288,10 +356,9 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
           radius: 26,
           backgroundImage:
               user['profilePhotoUrl'] != null &&
-                      (user['profilePhotoUrl'] as String).isNotEmpty
-                  ? NetworkImage(user['profilePhotoUrl'])
-                  : const AssetImage('assets/default_profile.png')
-                      as ImageProvider,
+                  (user['profilePhotoUrl'] as String).isNotEmpty
+              ? NetworkImage(user['profilePhotoUrl'])
+              : const AssetImage('assets/default_profile.png') as ImageProvider,
         ),
         title: Text(
           user['fullName'] ?? "User",
@@ -331,8 +398,10 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration:
-          BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Text(
         s.toUpperCase(),
         style: TextStyle(
@@ -344,8 +413,10 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
   }
 
   Future<Map<String, dynamic>?> _getUserOrWorker(String userId) async {
-    final userDoc =
-        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
     if (userDoc.exists) return userDoc.data();
     final workerDoc = await FirebaseFirestore.instance
         .collection('workers')
@@ -356,8 +427,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
   }
 
   /// (_showPendingJobDetailModal & _showJobRequestDetailModal)
-
-
 
   void _showPendingJobDetailModal(
     BuildContext context,
@@ -423,6 +492,15 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ),
+                TextButton.icon(
+                  icon: const Icon(Icons.person_outline, color: kAccentColor),
+                  label: const Text(
+                    'View Full Profile',
+                    style: TextStyle(color: kAccentColor),
+                  ),
+                  onPressed: () => _showProfileDetails(context, user),
+                ),
+
                 const Divider(color: Colors.white24, height: 22),
                 ListTile(
                   title: Text(
@@ -545,7 +623,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                     }
                   },
                 ),
-
               ],
             ),
           ),
@@ -618,6 +695,15 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ),
+                TextButton.icon(
+                  icon: const Icon(Icons.person_outline, color: kAccentColor),
+                  label: const Text(
+                    'View Full Profile',
+                    style: TextStyle(color: kAccentColor),
+                  ),
+                  onPressed: () => _showProfileDetails(context, user),
+                ),
+
                 const Divider(color: Colors.white24, height: 22),
                 ListTile(
                   title: Text(

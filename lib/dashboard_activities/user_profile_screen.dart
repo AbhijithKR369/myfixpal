@@ -186,7 +186,7 @@ class UserProfileScreen extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: const Color.fromARGB(255, 17, 37, 40),
-         appBar: AppBar(
+          appBar: AppBar(
             backgroundColor: const Color.fromARGB(255, 17, 37, 40),
             iconTheme: const IconThemeData(color: Colors.white),
           ),
@@ -248,15 +248,7 @@ class UserProfileScreen extends StatelessWidget {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 0),
                 onTap: () => _changePassword(context),
               ),
-              ListTile(
-                leading: const Icon(Icons.history, color: accentColor),
-                title: const Text(
-                  'View Past Activity / Requests',
-                  style: TextStyle(color: Colors.white),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 0),
-                onTap: () => Navigator.pushNamed(context, '/customer_history'),
-              ),
+
               ListTile(
                 leading: const Icon(Icons.support_agent, color: accentColor),
                 title: const Text(

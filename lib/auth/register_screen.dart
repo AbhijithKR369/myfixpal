@@ -127,7 +127,8 @@ class _RegisterScreenState extends State<RegisterScreen>
             'pincode': pincodeController.text.trim(),
             'profession': selectedProfession,
             'aadhaar': aadhaarController.text.trim(),
-            'isApproved': false, // <-- newly added
+            'isApproved': false,
+            'isAvailable': true,
             'aadhaarVerified': false,
             'aadhaarVerifiedAt': null,
             'verifiedAt': null,
