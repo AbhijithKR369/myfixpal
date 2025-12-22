@@ -1,7 +1,7 @@
 {
-  "version": "14.17.0",
+  "version": "14.27.0",
   "storage": {
-    "version": "14.17.0",
+    "version": "14.27.0",
     "path": "storage_export"
   }
 }

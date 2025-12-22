@@ -5,6 +5,142 @@ import '../dashboard_activities/service_browse.dart';
 
 class NotificationScreen extends StatelessWidget {
   const NotificationScreen({super.key});
+  Future<void> _cancelJobAsUser(
+    BuildContext context,
+    String workRequestId,
+  ) async {
+    final TextEditingController reasonCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Job'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Are you sure you want to cancel this job?'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Reason (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Back'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await FirebaseFirestore.instance
+        .collection('work_requests')
+        .doc(workRequestId)
+        .update({
+          'status': 'cancelled',
+          'cancelledBy': 'user',
+          'cancelReason': reasonCtrl.text.trim(),
+          'cancelledAt': FieldValue.serverTimestamp(),
+        });
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Job cancelled successfully'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmCompletionAsUser(
+    BuildContext context,
+    String workRequestId,
+  ) async {
+    final hoursCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Job Completion'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: hoursCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Total Hours Worked',
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: amountCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Amount Paid (₹)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await FirebaseFirestore.instance
+        .collection('work_requests')
+        .doc(workRequestId)
+        .update({
+          'status': 'completed',
+          'workHours': double.tryParse(hoursCtrl.text) ?? 0,
+          'amountPaid': double.tryParse(amountCtrl.text) ?? 0,
+          'completedAt': FieldValue.serverTimestamp(),
+          'completionConfirmedByUser': true,
+        });
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Job completed successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  void _autoPromptCompletion(
+    BuildContext context,
+    String status,
+    String workRequestId,
+  ) {
+    if (status == 'worker_completed') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _confirmCompletionAsUser(context, workRequestId);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +195,8 @@ class NotificationScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
               final status = data['status'] ?? 'pending';
+              _autoPromptCompletion(context, status, docs[index].id);
+
               final workerName = data['workerName'] ?? 'Unknown';
               final workerId = data['workerId'] ?? '';
               final workerMobile = data['workerMobile'] ?? '';
@@ -71,7 +209,7 @@ class NotificationScreen extends StatelessWidget {
               Color color;
               String message;
 
-             // ✅ Status-based notifications
+              // ✅ Status-based notifications
               if (status == 'accepted') {
                 icon = Icons.check_circle;
                 color = Colors.greenAccent;
@@ -79,7 +217,16 @@ class NotificationScreen extends StatelessWidget {
               } else if (status == 'cancelled') {
                 icon = Icons.warning_amber_rounded;
                 color = Colors.orangeAccent;
-                message = 'Your job was cancelled by $workerName';
+
+                final cancelledBy = data['cancelledBy'];
+
+                if (cancelledBy == 'user') {
+                  message = 'You cancelled this job request';
+                } else if (cancelledBy == 'worker') {
+                  message = 'Your job was cancelled by $workerName';
+                } else {
+                  message = 'This job was cancelled';
+                }
               } else if (status == 'rejected') {
                 icon = Icons.cancel;
                 color = Colors.redAccent;
@@ -89,12 +236,16 @@ class NotificationScreen extends StatelessWidget {
                 color = Colors.blueAccent;
                 message =
                     'Your job with $workerName has been marked as completed';
+              } else if (status == 'worker_completed') {
+                icon = Icons.assignment_turned_in;
+                color = Colors.deepPurpleAccent;
+                message =
+                    'Worker $workerName requested job completion. Please confirm.';
               } else {
                 icon = Icons.hourglass_empty;
                 color = Colors.amberAccent;
                 message = 'Your job request is still pending.';
               }
-
 
               return Card(
                 color: const Color(0xFF2B2F3A),
@@ -127,6 +278,22 @@ class NotificationScreen extends StatelessWidget {
                           fontSize: 12,
                         ),
                       ),
+                      if (status == 'pending' || status == 'accepted')
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            icon: const Icon(
+                              Icons.cancel,
+                              color: Colors.redAccent,
+                            ),
+                            label: const Text(
+                              'Cancel Job',
+                              style: TextStyle(color: Colors.redAccent),
+                            ),
+                            onPressed: () =>
+                                _cancelJobAsUser(context, docs[index].id),
+                          ),
+                        ),
                       if (status == 'accepted' || status == 'cancelled')
                         Align(
                           alignment: Alignment.centerRight,
@@ -166,47 +333,43 @@ class NotificationScreen extends StatelessWidget {
 
                               if (confirmed != true) return;
 
-                              try {
-                                await FirebaseFirestore.instance
-                                    .collection('work_requests')
-                                    .doc(docs[index].id)
-                                    .update({'status': 'pending'});
+                              await FirebaseFirestore.instance
+                                  .collection('work_requests')
+                                  .doc(docs[index].id)
+                                  .update({'status': 'pending'});
 
-                                if (context.mounted) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          ServiceRequestScreen(
-                                            workerId: workerId,
-                                            workerName: workerName,
-                                            workerMobile: workerMobile,
-                                            prefilledDescription: description,
-                                            prefilledDate:
-                                                (data['requestedDate'] != null)
-                                                ? (data['requestedDate']
-                                                          as Timestamp)
-                                                      .toDate()
-                                                : null,
-                                            workRequestId: docs[index].id,
-                                          ),
+                              if (context.mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ServiceRequestScreen(
+                                      workerId: workerId,
+                                      workerName: workerName,
+                                      workerMobile: workerMobile,
+                                      prefilledDescription: description,
+                                      prefilledDate:
+                                          data['requestedDate'] != null
+                                          ? (data['requestedDate'] as Timestamp)
+                                                .toDate()
+                                          : null,
+                                      workRequestId: docs[index].id,
                                     ),
-                                  );
-                                }
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Failed to reschedule: $e',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    backgroundColor: Colors.redAccent,
                                   ),
                                 );
                               }
                             },
+                          ),
+                        ),
+                      if (status == 'worker_completed')
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.check),
+                            label: const Text('Confirm Completion'),
+                            onPressed: () => _confirmCompletionAsUser(
+                              context,
+                              docs[index].id,
+                            ),
                           ),
                         ),
                     ],

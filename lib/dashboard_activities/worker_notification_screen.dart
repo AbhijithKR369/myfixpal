@@ -206,7 +206,16 @@ class WorkerNotificationScreen extends StatelessWidget {
                   case 'cancelled':
                     icon = Icons.cancel;
                     color = Colors.orangeAccent;
-                    message = '$workerNameStr cancelled your job request';
+
+                    final cancelledBy = notif['cancelledBy'];
+
+                    if (cancelledBy == 'user') {
+                      message = 'You cancelled the job request';
+                    } else if (cancelledBy == 'worker') {
+                      message = '$workerNameStr cancelled your job request';
+                    } else {
+                      message = 'Job request was cancelled';
+                    }
                     break;
 
                   case 'completed':
@@ -221,7 +230,6 @@ class WorkerNotificationScreen extends StatelessWidget {
                     color = Colors.amberAccent;
                     message = 'Job request pending with $workerNameStr';
                 }
-
 
                 return _notificationCard(
                   icon: icon,
@@ -262,6 +270,7 @@ class WorkerNotificationScreen extends StatelessWidget {
                                 ],
                               ),
                             );
+
                             if (confirmed != true) return;
 
                             try {
@@ -331,7 +340,21 @@ class WorkerNotificationScreen extends StatelessWidget {
                     case 'cancelled':
                       icon = Icons.cancel;
                       color = Colors.orangeAccent;
-                      message = 'You cancelled a job from $userName';
+
+                      final cancelledBy = notif['cancelledBy'];
+
+                      if (cancelledBy == 'user') {
+                        message = '$userName cancelled the job';
+                      } else if (cancelledBy == 'worker') {
+                        message = 'You cancelled the job for $userName';
+                      } else {
+                        message = 'Job was cancelled';
+                      }
+                      break;
+                    case 'worker_completed':
+                      icon = Icons.hourglass_top;
+                      color = Colors.deepPurpleAccent;
+                      message = 'Waiting for $userName to confirm completion';
                       break;
 
                     case 'completed':
@@ -346,7 +369,6 @@ class WorkerNotificationScreen extends StatelessWidget {
                       color = Colors.amberAccent;
                       message = 'New job request from $userName';
                   }
-
 
                   return _notificationCard(
                     icon: icon,

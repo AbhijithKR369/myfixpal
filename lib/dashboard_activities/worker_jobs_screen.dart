@@ -79,9 +79,10 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
       stream: FirebaseFirestore.instance
           .collection('work_requests')
           .where('workerId', isEqualTo: workerId)
-          .where('status', isEqualTo: 'accepted')
+          .where('status', whereIn: ['accepted', 'worker_completed'])
           .orderBy('requestedDate')
           .snapshots(),
+
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(
@@ -393,6 +394,10 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
       case 'rejected':
         color = Colors.red;
         break;
+      case 'worker_completed':
+        color = Colors.deepPurple;
+        break;
+
       default:
         color = Colors.white24;
     }
@@ -559,7 +564,11 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen>
                       ),
                     );
                     if (confirmed == true) {
-                      await ref.update({'status': 'completed'});
+                      await ref.update({
+                        'status': 'worker_completed',
+                        'completionRequestedAt': FieldValue.serverTimestamp(),
+                      });
+
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(

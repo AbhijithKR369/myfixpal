@@ -235,10 +235,13 @@ class WorkerProfileScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: SwitchListTile(
-                  activeColor: accentColor,
+                  activeThumbColor: accentColor,
                   title: const Text(
                     'Available for work',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   subtitle: Text(
                     (data['isAvailable'] ?? true)
